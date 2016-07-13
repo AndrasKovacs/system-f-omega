@@ -6,6 +6,8 @@ open import Relation.Nullary
 open import Relation.Nullary.Decidable
 open import Data.Product
 
+-- problem : weakening not good for inserting kinds into TCon
+
 -- Kinds and types
 --------------------------------------------------------------------------------
 
