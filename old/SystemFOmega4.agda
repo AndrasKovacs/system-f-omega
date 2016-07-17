@@ -154,7 +154,7 @@ mutual
   ... | inj₁ refl | sp' = appSpTy t' sp'
   ... | inj₂ v'   | sp' = ne (v' , sp')
 
-  substSpTy : ∀ {Γ A B C} (i : Ixₖ Γ) → NfTy Γ A → SpTy (ins i A) B C  → SpTy Γ B C
+  substSpTy : ∀ {Γ A B C} (i : Ixₖ Γ) → NfTy Γ A → SpTy (ins i A) B C → SpTy Γ B C
   substSpTy i t' ε        = ε
   substSpTy i t' (t ∷ sp) = substNfTy i t' t ∷ substSpTy i t' sp
 
@@ -254,7 +254,7 @@ mutual
     ∀ {Γ Γ' Δ Ξ A B}{s : Γ ⊆ Γ'} → Δ ⊆[ s ] Ξ → SpTm Δ A B → SpTm Ξ (ren-NfTy s A) (ren-NfTy s B)
   ren-SpTm s ε         = ε
   ren-SpTm s (x ∷ₜ sp) = ren-NfTm s x        ∷ₜ ren-SpTm s sp
-  ren-SpTm s (t ∷ₖ sp) = ren-NfTy (⊆-of s) t ∷ₖ {!ren-SpTm s sp!} -- TODO
+  ren-SpTm s (t ∷ₖ sp) = ren-NfTy (⊆-of s) t ∷ₖ {!ren-SpTm s sp!} -- TODO: subst-wk commute
 
 data Ixₜ : ∀ {Γ} → Ixₖ Γ → Conₜ Γ → Set where
   iz   : ∀ {Γ Δ}     → Ixₜ {Γ} iz Δ
@@ -270,10 +270,9 @@ insₜₖ {Δ = Δ ,ₖ B} A (isₖ i) = insₜₖ A i ,ₖ B
 insₜₖ {Δ = Δ ,ₜ B} A (isₜ i) = insₜₖ A i ,ₜ ren-NfTy (ins-⊆ (Ixₖ-of i) A) B
 
 insₜₜ : ∀ {Γ Δ i} → NfTy Γ ⋆ → Ixₜ {Γ} i Δ → Conₜ Γ
-insₜₜ = {!!}
-
--- insₖ : ∀ {Γ Δ} → Ixₜ {Γ} Δ → Kind → Conₜ (ins
-
+insₜₜ {Δ = Δ}      A iz      = Δ ,ₜ A
+insₜₜ {Δ = Δ ,ₖ B} A (isₖ i) = insₜₜ {!ren-NfTy ? A!} i ,ₖ B -- TODO: strip
+insₜₜ {Δ = Δ ,ₜ B} A (isₜ i) = insₜₜ A i ,ₜ B
 
 -- Normalization
 --------------------------------------------------------------------------------
