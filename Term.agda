@@ -2,145 +2,165 @@
 
 module SystemFOmega.Term where
 
-open import SystemFOmega.Type
+open import SystemFOmega.Type hiding (Con; _∈_; ren-∈; id; Ix; Ne; η-Ne; η; Sp; ren; renSp; sub)
+import SystemFOmega.Type as T
 
 open import Relation.Binary.PropositionalEquality
-open import Function
 open import Data.Product
+
+import Function as F
 
 --------------------------------------------------------------------------------
 
-data Conₜ : Conₖ → Set where
-  ε    : Conₜ ε
-  _,ₜ_ : ∀ {Γ} → Conₜ Γ → NfTy Γ ⋆ → Conₜ Γ
-  _,ₖ_ : ∀ {Γ} → Conₜ Γ → (A : Kind) → Conₜ (Γ , A)
-infixl 5 _,ₜ_ _,ₖ_
+data Con : T.Con → Set where
+  ε    : Con ε
+  _▷ₜ_ : ∀ {Γ} → Con Γ → Ty Γ ⋆ → Con Γ
+  _▷ₖ_ : ∀ {Γ} → Con Γ → (A : Kind) → Con (Γ ▷ A)
+infixl 5 _▷ₜ_ _▷ₖ_
 
-data _∈ₜ_ : ∀ {Γ} → NfTy Γ ⋆ → Conₜ Γ → Set where
-  vz   : ∀ {Γ}{Δ : Conₜ Γ}{A}   → A ∈ₜ (Δ ,ₜ A)
-  vsₜ_ : ∀ {Γ}{Δ : Conₜ Γ}{A B} → A ∈ₜ Δ → A ∈ₜ (Δ ,ₜ B)
-  vsₖ_ : ∀ {Γ}{Δ : Conₜ Γ}{A B} → A ∈ₜ Δ → ren-NfTy top A ∈ₜ (Δ ,ₖ B)
+data _∈_ : ∀ {Γ} → Ty Γ ⋆ → Con Γ → Set where
+  vz   : ∀ {Γ}{Δ : Con Γ}{A}   → A ∈ (Δ ▷ₜ A)
+  vsₜ_ : ∀ {Γ}{Δ : Con Γ}{A B} → A ∈ Δ → A ∈ (Δ ▷ₜ B)
+  vsₖ_ : ∀ {Γ}{Δ : Con Γ}{A B} → A ∈ Δ → T.ren top A ∈ (Δ ▷ₖ B)
 
-data Tm {Γ} (Δ : Conₜ Γ) : NfTy Γ ⋆ → Set where
-  var  : ∀ {A} → A ∈ₜ Δ → Tm Δ A
-  λ'   : ∀ A {B} → Tm (Δ ,ₜ A) B → Tm Δ (A ⇒ B)
+data Tm {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
+  var  : ∀ {A} → A ∈ Δ → Tm Δ A
+  ƛ_   : ∀ {A B} → Tm (Δ ▷ₜ A) B → Tm Δ (A ⇒ B)
   _∙_  : ∀ {A B} → Tm Δ (A ⇒ B) → Tm Δ A → Tm Δ B
-  Λ    : ∀ A {B} → Tm (Δ ,ₖ A) B → Tm Δ (∀' A B)
-  _∙ₜ_ : ∀ {A B} → Tm Δ (∀' A B) → (t : NfTy Γ A) → Tm Δ (instTy t B)
+  Λ_   : ∀ {A B} → Tm (Δ ▷ₖ A) B → Tm Δ (∀' B)
+  _∙ₜ_ : ∀ {A B} → Tm Δ (∀' B) → (t : Ty Γ A) → Tm Δ (T.inst t B)
 infixl 6 _∙ₜ_
 
 mutual
-  data NfTm {Γ} (Δ : Conₜ Γ) : NfTy Γ ⋆ → Set where
-    λ'   : ∀ A {B} → NfTm (Δ ,ₜ A) B → NfTm Δ (A ⇒ B)
-    Λ    : ∀ A {B} → NfTm (Δ ,ₖ A) B → NfTm Δ (∀' A B)
-    ne   : ∀ {n} → NeTm Δ (ne n) → NfTm Δ (ne n)
+  data Nf {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
+    ƛ_   : ∀ {A B} → Nf (Δ ▷ₜ A) B → Nf Δ (A ⇒ B)
+    Λ_   : ∀ {A B} → Nf (Δ ▷ₖ A) B → Nf Δ (∀' B)
+    ne   : ∀ {n} → Ne Δ (ne n) → Nf Δ (ne n)
 
-  data NeTm {Γ} (Δ : Conₜ Γ) : NfTy Γ ⋆ → Set where
-    _,_ : ∀ {A B} → A ∈ₜ Δ → SpTm Δ A B → NeTm Δ B
+  data Ne {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
+    _,_ : ∀ {A B} → A ∈ Δ → Sp Δ A B → Ne Δ B
 
-  data SpTm {Γ} (Δ : Conₜ Γ) : NfTy Γ ⋆ → NfTy Γ ⋆ → Set where
-    ε    : ∀ {A} → SpTm Δ A A
-    _∷ₜ_ : ∀ {A B C} → NfTm Δ A → SpTm Δ B C → SpTm Δ (A ⇒ B) C
-    _∷ₖ_ : ∀ {A B C} → (t : NfTy Γ A) → SpTm Δ (instTy t B) C → SpTm Δ (∀' A B) C
+  data Sp {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Ty Γ ⋆ → Set where
+    ε    : ∀ {A} → Sp Δ A A
+    _∷ₜ_ : ∀ {A B C} → Nf Δ A → Sp Δ B C → Sp Δ (A ⇒ B) C
+    _∷ₖ_ : ∀ {A B C} → (t : Ty Γ A) → Sp Δ (T.inst t B) C → Sp Δ (∀' B) C
   infixr 5 _∷ₜ_ _∷ₖ_
 
 -- Renaming
 --------------------------------------------------------------------------------
 
-data _⊆[_]_ : ∀ {Γ Γ'} → Conₜ Γ → Γ ⊆ Γ' → Conₜ Γ' → Set where
+data _⊆[_]_ : ∀ {Γ Γ'} → Con Γ → Γ ⊆ Γ' → Con Γ' → Set where
   stop  : ε ⊆[ stop ] ε
-  addₖ  : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → Δ        ⊆[ add s  ] (Ξ ,ₖ A)
-  addₜ  : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → Δ        ⊆[ s      ] (Ξ ,ₜ A)
-  keepₖ : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → (Δ ,ₖ A) ⊆[ keep s ] (Ξ ,ₖ A)
-  keepₜ : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → (Δ ,ₜ A) ⊆[ s      ] (Ξ ,ₜ ren-NfTy s A)
+  addₖ  : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → Δ        ⊆[ add s  ] (Ξ ▷ₖ A)
+  addₜ  : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → Δ        ⊆[ s      ] (Ξ ▷ₜ A)
+  keepₖ : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → (Δ ▷ₖ A) ⊆[ keep s ] (Ξ ▷ₖ A)
+  keepₜ : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → (Δ ▷ₜ A) ⊆[ s      ] (Ξ ▷ₜ T.ren s A)
 
-⊆-of : ∀ {Γ Γ' Δ Ξ}{s : Γ ⊆ Γ'} → Δ ⊆[ s ] Ξ → Γ ⊆ Γ'
-⊆-of {s = s} _ = s
+⊆-of : ∀ {Γ Γ' Δ Ξ}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Γ ⊆ Γ'
+⊆-of {o = o} _ = o
 
-idᵗ : ∀ {Γ}{Δ : Conₜ Γ} → Δ ⊆[ idᵏ ] Δ
-idᵗ {_}{ε}      = stop
-idᵗ {_}{Δ ,ₜ x} = subst (λ y → (Δ ,ₜ x) ⊆[ idᵏ ] (Δ ,ₜ y)) (ren-NfTy-id x) (keepₜ idᵗ)
-idᵗ {_}{Δ ,ₖ A} = keepₖ idᵗ
+id : ∀ {Γ}{Δ : Con Γ} → Δ ⊆[ T.id ] Δ
+id {_}{ε}      = stop
+id {_}{Δ ▷ₜ x} = subst (λ y → (Δ ▷ₜ x) ⊆[ T.id ] (Δ ▷ₜ y)) (T.ren-id x) (keepₜ id)
+id {_}{Δ ▷ₖ A} = keepₖ id
 
-topᵗ : ∀ {Γ}{Δ : Conₜ Γ} {A} → Δ ⊆[ idᵏ ] (Δ ,ₜ A)
-topᵗ = addₜ idᵗ
+topᵗ : ∀ {Γ}{Δ : Con Γ} {A} → Δ ⊆[ T.id ] (Δ ▷ₜ A)
+topᵗ = addₜ id
 
-topᵏ : ∀ {A Γ}{Δ : Conₜ Γ} → Δ ⊆[ top ] (Δ ,ₖ A)
-topᵏ = addₖ idᵗ
+topᵏ : ∀ {A Γ}{Δ : Con Γ} → Δ ⊆[ top ] (Δ ▷ₖ A)
+topᵏ = addₖ id
 
-ren-∈ₜ : ∀ {Γ Γ' Δ Ξ A}{ks : Γ ⊆ Γ'} → Δ ⊆[ ks ] Ξ → A ∈ₜ Δ → ren-NfTy ks A ∈ₜ Ξ
-ren-∈ₜ stop ()
-ren-∈ₜ (addₖ s)  v       = subst (_∈ₜ _) (top-add _ _ _) (vsₖ (ren-∈ₜ s v))
-ren-∈ₜ (addₜ s)  v       = vsₜ (ren-∈ₜ s v)
-ren-∈ₜ (keepₖ s) (vsₖ v) = subst (_∈ₜ _) (keep-top _ _ _) (vsₖ (ren-∈ₜ s v))
-ren-∈ₜ (keepₜ s) vz      = vz
-ren-∈ₜ (keepₜ s) (vsₜ v) = vsₜ ren-∈ₜ s v
+ren-∈ : ∀ {Γ Γ' Δ Ξ A}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → A ∈ Δ → T.ren o A ∈ Ξ
+ren-∈ stop ()
+ren-∈ (addₖ o)  v       = subst (_∈ _) (top-add _ _) (vsₖ (ren-∈ o v))
+ren-∈ (addₜ o)  v       = vsₜ (ren-∈ o v)
+ren-∈ (keepₖ o) (vsₖ v) = subst (_∈ _) (top-keep _ _) (vsₖ (ren-∈ o v))
+ren-∈ (keepₜ o) vz      = vz
+ren-∈ (keepₜ o) (vsₜ v) = vsₜ ren-∈ o v
 
 mutual
-  ren-NfTm : ∀ {Γ Γ' Δ Ξ A}{s : Γ ⊆ Γ'} → Δ ⊆[ s ] Ξ → NfTm Δ A → NfTm Ξ (ren-NfTy s A)
-  ren-NfTm s (λ' _ t) = λ' _ (ren-NfTm (keepₜ s) t)
-  ren-NfTm s (Λ  _ t) = Λ  _ (ren-NfTm (keepₖ s) t)
-  ren-NfTm s (ne {_ , _} (v , sp)) = ne (ren-∈ₜ s v , ren-SpTm s sp)
+  ren : ∀ {Γ Γ' Δ Ξ A}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Nf Δ A → Nf Ξ (T.ren o A)
+  ren o (ƛ t) = ƛ (ren (keepₜ o) t)
+  ren o (Λ t) = Λ (ren (keepₖ o) t)
+  ren o (ne {_ , _} (v , sp)) = ne (ren-∈ o v , renSp o sp)
 
-  ren-SpTm :
-    ∀ {Γ Γ' Δ Ξ A B}{s : Γ ⊆ Γ'} → Δ ⊆[ s ] Ξ → SpTm Δ A B → SpTm Ξ (ren-NfTy s A) (ren-NfTy s B)
-  ren-SpTm s ε         = ε
-  ren-SpTm s (x ∷ₜ sp) = ren-NfTm s x        ∷ₜ ren-SpTm s sp
-  ren-SpTm s (t ∷ₖ sp) = ren-NfTy (⊆-of s) t ∷ₖ {!ren-SpTm s sp!} -- TODO: subst-wk commute
+  renSp : ∀ {Γ Γ' Δ Ξ A B}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Sp Δ A B → Sp Ξ (T.ren o A) (T.ren o B)
+  renSp o ε         = ε
+  renSp o (x ∷ₜ sp) = ren o x ∷ₜ renSp o sp
+  renSp o (_∷ₖ_ {B = B} t sp) =
+    T.ren (⊆-of o) t ∷ₖ subst (λ x → Sp _ x _) (sub-ren-comm (⊆-of o) iz t B) (renSp o sp)
 
-ren-NfTm' : ∀ {Γ Δ Ξ A} → Δ ⊆[ idᵏ ] Ξ → NfTm {Γ} Δ A → NfTm Ξ A
-ren-NfTm' s t = subst (NfTm _) (ren-NfTy-id _) (ren-NfTm s t)
+ren' : ∀ {Γ Δ Ξ A} → Δ ⊆[ T.id ] Ξ → Nf {Γ} Δ A → Nf Ξ A
+ren' s t = subst (Nf _) (T.ren-id _) (ren s t)
 
-ren-SpTm' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ idᵏ ] Ξ → SpTm {Γ} Δ A B → SpTm Ξ A B
-ren-SpTm' s t = subst₂ (SpTm _) (ren-NfTy-id _) (ren-NfTy-id _) (ren-SpTm s t)
+renSp' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ T.id ] Ξ → Sp {Γ} Δ A B → Sp Ξ A B
+renSp' s t = subst₂ (Sp _) (T.ren-id _) (T.ren-id _) (renSp s t)
 
-data Ixₜ : ∀ {Γ} → Ixₖ Γ → Conₜ Γ → Set where
-  iz   : ∀ {Γ Δ}     → Ixₜ {Γ} iz Δ
-  isₖ_ : ∀ {Γ Δ A i} → Ixₜ {Γ} i Δ → Ixₜ (is i) (Δ ,ₖ A)
-  isₜ_ : ∀ {Γ Δ A i} → Ixₜ {Γ} i Δ → Ixₜ i (Δ ,ₜ A)
+data Ix : ∀ {Γ} → T.Ix Γ → Con Γ → Set where
+  iz   : ∀ {Γ Δ}     → Ix {Γ} iz Δ
+  isₖ_ : ∀ {Γ Δ A i} → Ix {Γ} i Δ → Ix (is i) (Δ ▷ₖ A)
+  isₜ_ : ∀ {Γ Δ A i} → Ix {Γ} i Δ → Ix i (Δ ▷ₜ A)
 
-Ixₖ-of : ∀ {Γ Δ i} → Ixₜ {Γ} i Δ → Ixₖ Γ
-Ixₖ-of {i = i} _ = i
+Ix-of : ∀ {Γ Δ i} → Ix {Γ} i Δ → T.Ix Γ
+Ix-of {i = i} _ = i
 
-insₖ : ∀ {Γ Δ i} A → Ixₜ {Γ} i Δ → Conₜ (ins i A)
-insₖ {Δ = Δ}      A iz      = Δ ,ₖ A
-insₖ {Δ = Δ ,ₖ B} A (isₖ i) = insₖ A i ,ₖ B
-insₖ {Δ = Δ ,ₜ B} A (isₜ i) = insₖ A i ,ₜ ren-NfTy (ins-⊆ (Ixₖ-of i) A) B
+insₖ : ∀ {Γ Δ i} A → Ix {Γ} i Δ → Con (ins Γ i A)
+insₖ {Δ = Δ}      A iz      = Δ ▷ₖ A
+insₖ {Δ = Δ ▷ₖ B} A (isₖ i) = insₖ A i ▷ₖ B
+insₖ {Δ = Δ ▷ₜ B} A (isₜ i) = insₖ A i ▷ₜ T.ren (ins-⊆ _ (Ix-of i) A) B
 
-insₜ : ∀ {Γ Δ i} → NfTy (drop {Γ} i) ⋆ → Ixₜ i Δ → Conₜ Γ
-insₜ {Δ = Δ}      A iz      = Δ ,ₜ A
-insₜ {Δ = Δ ,ₖ B} A (isₖ i) = insₜ A i ,ₖ B
-insₜ {Δ = Δ ,ₜ B} A (isₜ i) = insₜ A i ,ₜ B
+insₜ : ∀ {Γ} Δ {i} → Ix i Δ → Ty (drop Γ i) ⋆ → Con Γ
+insₜ Δ         iz      A = Δ ▷ₜ A
+insₜ (Δ ▷ₖ B)  (isₖ i) A = insₜ Δ i A ▷ₖ B
+insₜ (Δ ▷ₜ B)  (isₜ i) A = insₜ Δ i A ▷ₜ B
 
 -- Normalization
 --------------------------------------------------------------------------------
 
-snocSpTmₜ : ∀ {Γ Δ A B C} → SpTm {Γ} Δ A (B ⇒ C) → NfTm Δ B → SpTm Δ A C
-snocSpTmₜ ε         t = t ∷ₜ ε
-snocSpTmₜ (x ∷ₜ sp) t = x ∷ₜ snocSpTmₜ sp t
-snocSpTmₜ (x ∷ₖ sp) t = x ∷ₖ snocSpTmₜ sp t
+snocSpₜ : ∀ {Γ Δ A B C} → Sp {Γ} Δ A (B ⇒ C) → Nf Δ B → Sp Δ A C
+snocSpₜ ε         t = t ∷ₜ ε
+snocSpₜ (x ∷ₜ sp) t = x ∷ₜ snocSpₜ sp t
+snocSpₜ (x ∷ₖ sp) t = x ∷ₖ snocSpₜ sp t
 
-snocSpTmₖ : ∀ {Γ Δ A B C} → SpTm {Γ} Δ A (∀' B C) → (t : NfTy Γ B) → SpTm Δ A (instTy t C)
-snocSpTmₖ ε         t = t ∷ₖ ε
-snocSpTmₖ (x ∷ₜ sp) t = x ∷ₜ snocSpTmₖ sp t
-snocSpTmₖ (x ∷ₖ sp) t = x ∷ₖ snocSpTmₖ sp t
-
--- Proof
-inst-top : ∀ {Γ A B}(t' : NfTy Γ B)(t : NfTy Γ A) → instTy t' (ren-NfTy top t) ≡ t
-inst-top = {!!}
--- Proof
+snocSpₖ : ∀ {Γ Δ A B C} → Sp {Γ} Δ A (∀' C) → (t : Ty Γ B) → Sp Δ A (inst t C)
+snocSpₖ ε         t = t ∷ₖ ε
+snocSpₖ (x ∷ₜ sp) t = x ∷ₜ snocSpₖ sp t
+snocSpₖ (x ∷ₖ sp) t = x ∷ₖ snocSpₖ sp t
 
 mutual
-  η-Tm : ∀ {Γ Δ A} → A ∈ₜ Δ → NfTm {Γ} Δ A
-  η-Tm v = η-NeTm (v , ε)
-  
-  η-NeTm : ∀ {Γ Δ A} → NeTm {Γ} Δ A → NfTm Δ A
-  η-NeTm {A = A ⇒ B}  (v , sp) = λ' A (η-NeTm (vsₜ v , snocSpTmₜ (ren-SpTm' topᵗ sp) (η-Tm vz)))
-  η-NeTm {Γ}{Δ}{A = ∀' A B} (_,_ {C} v sp) = Λ A {!!}
-    -- Λ A (η-NeTm (vsₖ v ,    -- where does the renaming come from??
-    --   subst (SpTm (Δ ,ₖ A) (ren-NfTy top C)) (inst-top (η-Ty vz) B)
-    --   (snocSpTmₖ {_}{Δ ,ₖ A}{ren-NfTy top C}{A}{ren-NfTy top B}
-    --   {!ren-SpTm (topᵏ{A}) sp !} -- Proof!
-    --   (η-Ty vz)) ))
-  η-NeTm {A = ne nt}  n = ne n
+  η : ∀ {Γ Δ A} → A ∈ Δ → Nf {Γ} Δ A
+  η v = η-Ne (v , ε)
+
+  η-Ne : ∀ {Γ Δ A} → Ne {Γ} Δ A → Nf Δ A
+  η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , snocSpₜ (renSp' topᵗ sp) (η vz))
+  η-Ne {A = ∀' B}  (v , sp) = {!!}
+  η-Ne {A = ne _}  n        = ne n
+
+mutual
+  subₜ : ∀ {Γ i Δ A B}(j : Ix {Γ} i Δ) → Nf {!dropᶜ j Δ!} A → Nf (insₜ Δ j A) B → Nf Δ B
+  subₜ = {!!}
+
+
+
+-- mutual
+--   sub : ∀ {Γ A B} (i : Ix Γ) → Ty Γ A → Ty (ins Γ i A) B → Ty Γ B
+--   sub i t' (A ⇒ B) = sub i t' A ⇒ sub i t' B
+--   sub i t' (∀' A)  = ∀' (sub (is i) (ren top t') A)
+--   sub i t' (ƛ t)   = ƛ (sub (is i) (ren top t') t)
+--   sub i t' (ne (v , sp)) with ∈-eq i v | subSp i t' sp
+--   ... | inj₁ refl | sp' = appSp t' sp'
+--   ... | inj₂ v'   | sp' = ne (v' , sp')
+
+--   subSp : ∀ {Γ A B C} (i : Ix Γ) → Ty Γ A → Sp (ins Γ i A) B C → Sp Γ B C
+--   subSp i t' ε        = ε
+--   subSp i t' (t ∷ sp) = sub i t' t ∷ subSp i t' sp
+
+--   appSp : ∀ {Γ A B} → Ty Γ A → Sp Γ A B → Ty Γ B
+--   appSp t ε            = t
+--   appSp (ƛ t) (x ∷ sp) = appSp (sub iz x t) sp
+
+-- inst : ∀ {Γ A B} → Ty Γ A → Ty (Γ ▷ A) B → Ty Γ B
+-- inst = sub iz
+
+
 
