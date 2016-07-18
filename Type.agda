@@ -82,6 +82,10 @@ drop : ∀ Γ (i : Ix Γ) → Con
 drop Γ       iz     = Γ
 drop (Γ ▷ _) (is i) = drop Γ i
 
+drop-⊆ : ∀ Γ i → drop Γ i ⊆ Γ
+drop-⊆ Γ       iz     = id
+drop-⊆ (Γ ▷ _) (is i) = add (drop-⊆ Γ i)
+
 snocSp : ∀ {Γ A B C} → Sp Γ A (B ⇒ C) → Ty Γ B → Sp Γ A C
 snocSp ε       t = t ∷ ε
 snocSp (x ∷ s) t = x ∷ snocSp s t

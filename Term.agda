@@ -2,7 +2,8 @@
 
 module SystemFOmega.Term where
 
-open import SystemFOmega.Type hiding (Con; _∈_; ren-∈; id; Ix; Ne; η-Ne; η; Sp; ren; renSp; sub)
+open import SystemFOmega.Type
+  hiding (Con; _∈_; ren-∈; id; Ix; Ne; η-Ne; η; Sp; ren; renSp; sub; drop; drop-⊆)
 import SystemFOmega.Type as T
 
 open import Relation.Binary.PropositionalEquality
@@ -61,7 +62,7 @@ data _⊆[_]_ : ∀ {Γ Γ'} → Con Γ → Γ ⊆ Γ' → Con Γ' → Set where
 
 id : ∀ {Γ}{Δ : Con Γ} → Δ ⊆[ T.id ] Δ
 id {_}{ε}      = stop
-id {_}{Δ ▷ₜ x} = subst (λ y → (Δ ▷ₜ x) ⊆[ T.id ] (Δ ▷ₜ y)) (T.ren-id x) (keepₜ id)
+id {_}{Δ ▷ₜ t} = subst (λ y → (Δ ▷ₜ t) ⊆[ T.id ] (Δ ▷ₜ y)) (T.ren-id t) (keepₜ id)
 id {_}{Δ ▷ₖ A} = keepₖ id
 
 topᵗ : ∀ {Γ}{Δ : Con Γ} {A} → Δ ⊆[ T.id ] (Δ ▷ₜ A)
@@ -109,10 +110,20 @@ insₖ {Δ = Δ}      A iz      = Δ ▷ₖ A
 insₖ {Δ = Δ ▷ₖ B} A (isₖ i) = insₖ A i ▷ₖ B
 insₖ {Δ = Δ ▷ₜ B} A (isₜ i) = insₖ A i ▷ₜ T.ren (ins-⊆ _ (Ix-of i) A) B
 
-insₜ : ∀ {Γ} Δ {i} → Ix i Δ → Ty (drop Γ i) ⋆ → Con Γ
+insₜ : ∀ {Γ} Δ {i} → Ix i Δ → Ty (T.drop Γ i) ⋆ → Con Γ
 insₜ Δ         iz      A = Δ ▷ₜ A
 insₜ (Δ ▷ₖ B)  (isₖ i) A = insₜ Δ i A ▷ₖ B
 insₜ (Δ ▷ₜ B)  (isₜ i) A = insₜ Δ i A ▷ₜ B
+
+drop : ∀ {Γ i} → (Δ : Con Γ) → Ix {Γ} i Δ → Con (T.drop Γ i)
+drop Δ        iz      = Δ
+drop (Δ ▷ₖ _) (isₖ i) = drop Δ i
+drop (Δ ▷ₜ _) (isₜ i) = drop Δ i
+
+drop-⊆ : ∀ {Γ i} Δ (j : Ix {Γ} i Δ) → drop Δ j ⊆[ T.drop-⊆ Γ i ] Δ
+drop-⊆ Δ        iz      = id
+drop-⊆ (Δ ▷ₖ _) (isₖ j) = addₖ (drop-⊆ Δ j)
+drop-⊆ (Δ ▷ₜ _) (isₜ j) = addₜ (drop-⊆ Δ j)
 
 -- Normalization
 --------------------------------------------------------------------------------
@@ -137,9 +148,10 @@ mutual
   η-Ne {A = ne _}  n        = ne n
 
 mutual
-  subₜ : ∀ {Γ i Δ A B}(j : Ix {Γ} i Δ) → Nf {!dropᶜ j Δ!} A → Nf (insₜ Δ j A) B → Nf Δ B
-  subₜ = {!!}
-
+  sub : ∀ {Γ i Δ A B}(j : Ix {Γ} i Δ) → Nf (drop Δ j) A → Nf (insₜ Δ j A) B → Nf Δ B
+  sub j t' (ƛ t) = ƛ sub (isₜ j) t' t
+  sub j t' (Λ t) = Λ sub (isₖ j) t' t
+  sub j t' (ne (v , sp)) = {!!}
 
 
 -- mutual
