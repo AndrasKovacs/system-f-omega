@@ -86,6 +86,11 @@ drop-⊆ : ∀ Γ i → drop Γ i ⊆ Γ
 drop-⊆ Γ       iz     = id
 drop-⊆ (Γ ▷ _) (is i) = add (drop-⊆ Γ i)
 
+⊆-drop : ∀ {Γ Δ}(o : Γ ⊆ Δ) i {{p : Ins i o}} → drop Γ i ⊆ drop Δ (ren-Ix o i)
+⊆-drop o        iz     = o
+⊆-drop (add o)  (is i) {{()}}
+⊆-drop (keep o) (is i) = ⊆-drop o i
+
 snocSp : ∀ {Γ A B C} → Sp Γ A (B ⇒ C) → Ty Γ B → Sp Γ A C
 snocSp ε       t = t ∷ ε
 snocSp (x ∷ s) t = x ∷ snocSp s t
@@ -111,8 +116,8 @@ ren-∈-Eq o = smap F.id (ren-∈ o)
 mutual
  ren : ∀ {Γ Δ A} → Γ ⊆ Δ → Ty Γ A → Ty Δ A
  ren o (A ⇒ B)       = ren o A ⇒ ren o B
- ren o (∀' A)        = ∀' (ren (keep o) A)
- ren o (ƛ A)         = ƛ ren (keep o) A
+ ren o (∀' A)        = ∀' ren (keep o) A
+ ren o (ƛ A)         = ƛ  ren (keep o) A
  ren o (ne (v , sp)) = ne (ren-∈ o v , renSp o sp)
 
  renSp : ∀ {Γ Δ A B} → Γ ⊆ Δ → Sp Γ A B → Sp Δ A B
@@ -131,15 +136,15 @@ mutual
   η-Ne {A ⇒ B} (v , sp) = ƛ η-Ne ((vs v) , snocSp (renSp top sp) (η vz))
 
 mutual
-  sub : ∀ {Γ A B} (i : Ix Γ) → Ty Γ A → Ty (ins Γ i A) B → Ty Γ B
+  sub : ∀ {Γ A B} (i : Ix Γ) → Ty (drop Γ i) A → Ty (ins Γ i A) B → Ty Γ B
   sub i t' (A ⇒ B) = sub i t' A ⇒ sub i t' B
-  sub i t' (∀' A)  = ∀' (sub (is i) (ren top t') A)
-  sub i t' (ƛ t)   = ƛ (sub (is i) (ren top t') t)
+  sub i t' (∀' A)  = ∀' sub (is i) t' A
+  sub i t' (ƛ t)   = ƛ  sub (is i) t' t
   sub i t' (ne (v , sp)) with ∈-eq i v | subSp i t' sp
-  ... | inj₁ refl | sp' = appSp t' sp'
+  ... | inj₁ refl | sp' = appSp (ren (drop-⊆ _ i) t') sp'
   ... | inj₂ v'   | sp' = ne (v' , sp')
 
-  subSp : ∀ {Γ A B C} (i : Ix Γ) → Ty Γ A → Sp (ins Γ i A) B C → Sp Γ B C
+  subSp : ∀ {Γ A B C} (i : Ix Γ) → Ty (drop Γ i) A → Sp (ins Γ i A) B C → Sp Γ B C
   subSp i t' ε        = ε
   subSp i t' (t ∷ sp) = sub i t' t ∷ subSp i t' sp
 
@@ -223,10 +228,10 @@ inj₂-inj refl = refl
 ∈-eq-ins A (is i) (vs v) = cong (smap F.id vs_) (∈-eq-ins A i v)
 
 mutual
-  sub-ren : ∀ {Γ A B} i (t' : Ty Γ B)(t : Ty Γ A) → sub i t' (ren (ins-⊆ Γ i B) t) ≡ t
+  sub-ren : ∀ {Γ A B} i (t' : Ty (drop Γ i) B)(t : Ty Γ A) → sub i t' (ren (ins-⊆ Γ i B) t) ≡ t
   sub-ren i t' (A ⇒ B) = cong₂ _⇒_ (sub-ren i t' A) (sub-ren i t' B)
-  sub-ren i t' (∀' A)  = cong ∀'_ (sub-ren (is i) (ren top t') A)
-  sub-ren i t' (ƛ t)   = cong ƛ_ (sub-ren (is i) (ren top t') t)
+  sub-ren i t' (∀' A)  = cong ∀'_ (sub-ren (is i) t' A)
+  sub-ren i t' (ƛ t)   = cong ƛ_  (sub-ren (is i) t' t)
   sub-ren {B = B} i t' (ne (v , sp))
     with ∈-eq i (ren-∈ (ins-⊆ _ i B) v) | inspect (∈-eq i) (ren-∈ (ins-⊆ _ i B) v)
   ... | inj₂ v' | [ eq ] = cong₂ (λ x y → ne (x , y))
@@ -236,7 +241,7 @@ mutual
   ... | ()
 
   subSp-ren :
-    ∀ {Γ A B C} i (t' : Ty Γ B)(sp : Sp Γ A C) → subSp i t' (renSp (ins-⊆ Γ i B) sp) ≡ sp
+    ∀ {Γ A B C} i (t' : Ty (drop Γ i) B)(sp : Sp Γ A C) → subSp i t' (renSp (ins-⊆ Γ i B) sp) ≡ sp
   subSp-ren i t' ε        = refl
   subSp-ren i t' (x ∷ sp) = cong₂ _∷_ (sub-ren i t' x) (subSp-ren i t' sp)
 
@@ -265,34 +270,39 @@ top-keep {B = B} t o rewrite
 ... | rec | inj₁ _ | [ eq ] rewrite rec | eq = refl
 ... | rec | inj₂ _ | [ eq ] rewrite rec | eq = refl
 
+drop-⊆-comm' :
+  ∀ {Γ Δ} (o : Γ ⊆ Δ) i {{_ : Ins i o}} →
+  (drop-⊆ Δ (ren-Ix o i) ∘ ⊆-drop o i) ≡ (o ∘ drop-⊆ Γ i)
+drop-⊆-comm' o        iz     = trans (id-∘ o) (sym (∘-id o))
+drop-⊆-comm' (keep o) (is i) = cong add (drop-⊆-comm' o i)
+drop-⊆-comm' (add o)  (is i) {{()}}
+
+drop-⊆-comm :
+  ∀ {Γ Δ A} (o : Γ ⊆ Δ) i {{_ : Ins i o}}(t : Ty (drop Γ i) A) → 
+  ren (drop-⊆ Δ (ren-Ix o i)) (ren (⊆-drop o i) t) ≡ ren o (ren (drop-⊆ Γ i) t)
+drop-⊆-comm {Γ}{Δ} o i t rewrite
+  ren-∘ o (drop-⊆ Γ i) t | ren-∘ (drop-⊆ Δ (ren-Ix o i)) (⊆-drop o i) t
+  = cong (λ x → ren x t) (drop-⊆-comm' o i)
+
 mutual
   sub-ren-comm :
-    ∀ {Γ Δ A B}(o : Γ ⊆ Δ)(i : Ix Γ){{p : Ins i o}}(t' : Ty Γ A)(t : Ty (ins Γ i A) B)
-    → ren o (sub i t' t) ≡ sub (ren-Ix o i) (ren o t') (ren (⊆-ins o i) t)
-
-  sub-ren-comm o i t' (A ⇒ B)
-    rewrite sub-ren-comm o i t' A | sub-ren-comm o i t' B = refl
-  sub-ren-comm o i t' (∀'_ {A} B)
-    rewrite top-keep {B = A} t' o = cong ∀'_ (sub-ren-comm (keep o) (is i) (ren top t') B)
-  sub-ren-comm o i t' (ƛ_ {A = A} t)
-    rewrite top-keep {B = A} t' o = cong ƛ_ (sub-ren-comm (keep o) (is i) (ren top t') t)
-
-  sub-ren-comm o i {{p}} t' (ne (v , sp)) with
-      ∈-eq (ren-Ix o i) (ren-∈ (⊆-ins o i) v)
-    | ∈-eq-ins-comm o i v
-    | ∈-eq i v
-    | inspect (∈-eq i) v
-  ... | inj₁ refl | q | inj₁ refl | _  rewrite sym $ subSp-ren-comm o i t' sp
-    = appSp-ren-comm o t' (subSp i t' sp)
-  ... | inj₂ v'   | q | inj₂ _    | [ eq ] rewrite eq
-    = cong₂ (λ x y → ne (x , y)) (sym (inj₂-inj q)) (subSp-ren-comm o i t' sp)
-
-  ... | inj₁ refl | q | inj₂ _    | [ eq ] rewrite eq = ⊥-elim $ ⊎-conflict q
-  ... | inj₂ v'   | q | inj₁ x    | [ eq ] rewrite eq = ⊥-elim $ ⊎-conflict (sym q)
+    ∀ {Γ Δ A B}(o : Γ ⊆ Δ)(i : Ix Γ){{p : Ins i o}}(t' : Ty (drop Γ i) A)(t : Ty (ins Γ i A) B)
+    → ren o (sub i t' t) ≡ sub (ren-Ix o i) (ren (⊆-drop o i) t') (ren (⊆-ins o i) t)
+  sub-ren-comm o i t' (A ⇒ B) rewrite sub-ren-comm o i t' A | sub-ren-comm o i t' B = refl
+  sub-ren-comm o i t' (ƛ t)  = cong ƛ_  (sub-ren-comm (keep o) (is i) t' t)
+  sub-ren-comm o i t' (∀' t) = cong ∀'_ (sub-ren-comm (keep o) (is i) t' t)
+  sub-ren-comm o i t' (ne (v , sp)) with
+      ∈-eq (ren-Ix o i) (ren-∈ (⊆-ins o i) v) | ∈-eq-ins-comm o i v | ∈-eq i v | inspect (∈-eq i) v
+  ... | inj₁ refl | p | inj₁ refl | eq rewrite sym $ subSp-ren-comm o i t' sp | drop-⊆-comm  o i t'
+    = appSp-ren-comm o (ren (drop-⊆ _ i) t') (subSp i t' sp)
+  ... | inj₂ v'   | p | inj₂ _    | [ eq ] rewrite eq
+    = cong₂ (λ x y → ne (x , y)) (sym (inj₂-inj p)) (subSp-ren-comm o i t' sp)  
+  ... | inj₁ x    | p | inj₂ y    | [ eq ] rewrite eq = ⊥-elim (⊎-conflict p)
+  ... | inj₂ y    | p | inj₁ x    | [ eq ] rewrite eq = ⊥-elim (⊎-conflict (sym p))
 
   subSp-ren-comm :
-    ∀ {Γ Δ A B C}(o : Γ ⊆ Δ)(i : Ix Γ){{p : Ins i o}}(t' : Ty Γ A)(sp : Sp (ins Γ i A) B C)
-    → renSp o (subSp i t' sp) ≡ subSp (ren-Ix o i) (ren o t') (renSp (⊆-ins o i) sp)
+    ∀ {Γ Δ A B C}(o : Γ ⊆ Δ)(i : Ix Γ){{p : Ins i o}}(t' : Ty (drop Γ i) A)(sp : Sp (ins Γ i A) B C)
+    → renSp o (subSp i t' sp) ≡ subSp (ren-Ix o i) (ren (⊆-drop o i) t') (renSp (⊆-ins o i) sp)
   subSp-ren-comm o i t' ε        = refl
   subSp-ren-comm o i t' (t ∷ sp) = cong₂ _∷_ (sub-ren-comm o i t' t ) (subSp-ren-comm o i t' sp)
 

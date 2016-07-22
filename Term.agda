@@ -1,13 +1,14 @@
-{-# OPTIONS --without-K #-}
 
 module SystemFOmega.Term where
 
 open import SystemFOmega.Type
-  hiding (Con; _∈_; ren-∈; id; Ix; Ne; η-Ne; η; Sp; ren; renSp; sub; drop; drop-⊆)
+  hiding (Con; _∈_; ren-∈; id; Ix; Ne; η-Ne; η; Sp; ren;
+          renSp; sub; drop; drop-⊆; ∈-eq; subSp; appSp)
 import SystemFOmega.Type as T
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Product
+open import Data.Sum
 
 import Function as F
 
@@ -105,10 +106,10 @@ data Ix : ∀ {Γ} → T.Ix Γ → Con Γ → Set where
 Ix-of : ∀ {Γ Δ i} → Ix {Γ} i Δ → T.Ix Γ
 Ix-of {i = i} _ = i
 
-insₖ : ∀ {Γ Δ i} A → Ix {Γ} i Δ → Con (ins Γ i A)
-insₖ {Δ = Δ}      A iz      = Δ ▷ₖ A
-insₖ {Δ = Δ ▷ₖ B} A (isₖ i) = insₖ A i ▷ₖ B
-insₖ {Δ = Δ ▷ₜ B} A (isₜ i) = insₖ A i ▷ₜ T.ren (ins-⊆ _ (Ix-of i) A) B
+insₖ : ∀ {Γ i} Δ → Ix {Γ} i Δ → ∀ A → Con (ins Γ i A)
+insₖ Δ        iz      A = Δ ▷ₖ A
+insₖ (Δ ▷ₖ B) (isₖ i) A = insₖ Δ i A ▷ₖ B
+insₖ (Δ ▷ₜ B) (isₜ i) A = insₖ Δ i A ▷ₜ T.ren (ins-⊆ _ (Ix-of i) A) B
 
 insₜ : ∀ {Γ} Δ {i} → Ix i Δ → Ty (T.drop Γ i) ⋆ → Con Γ
 insₜ Δ         iz      A = Δ ▷ₜ A
@@ -147,32 +148,70 @@ mutual
   η-Ne {A = ∀' B}  (v , sp) = {!!}
   η-Ne {A = ne _}  n        = ne n
 
+∈-eq : ∀ {Γ Δ i A B}(j : Ix {Γ} i Δ) → B ∈ insₜ Δ j A → (T.ren (T.drop-⊆ Γ i) A ≡ B) ⊎ (B ∈ Δ)
+∈-eq iz vz      = inj₁ (ren-id _)
+∈-eq iz (vsₜ v) = inj₂ v
+∈-eq (isₖ j) (vsₖ v) with ∈-eq j v
+... | inj₁ p  = inj₁ (trans (sym (top-add _ _)) (cong (T.ren top) p))
+... | inj₂ v' = inj₂ (vsₖ v')
+∈-eq (isₜ j) vz = inj₂ vz
+∈-eq (isₜ j) (vsₜ v) with ∈-eq j v
+... | inj₁ p  = inj₁ p
+... | inj₂ v' = inj₂ (vsₜ v')
+
 mutual
-  sub : ∀ {Γ i Δ A B}(j : Ix {Γ} i Δ) → Nf (drop Δ j) A → Nf (insₜ Δ j A) B → Nf Δ B
-  sub j t' (ƛ t) = ƛ sub (isₜ j) t' t
-  sub j t' (Λ t) = Λ sub (isₖ j) t' t
-  sub j t' (ne (v , sp)) = {!!}
+  {-# TERMINATING #-} -- try without drop?
+  subₜ : ∀ {Γ i Δ A B}(j : Ix {Γ} i Δ) → Nf (drop Δ j) A → Nf (insₜ Δ j A) B → Nf Δ B
+  subₜ j t' (ƛ t) = ƛ subₜ (isₜ j) t' t
+  subₜ j t' (Λ t) = Λ subₜ (isₖ j) t' t
+  subₜ j t' (ne (v , sp)) with ∈-eq j v | subSpₜ j t' sp
+  ... | inj₁ refl | sp' = appSp (ren (drop-⊆ _ j) t') sp'
+  ... | inj₂ v'   | sp' = ne (v' , sp')
+
+  subₖ : ∀ {Γ i Δ A B}(j : Ix {Γ} i Δ) → (t' : Ty (T.drop Γ i) A) → Nf (insₖ Δ j A) B → Nf Δ (T.sub i t' B)
+  subₖ {Γ}{i}{Δ}{A}{B ⇒ C}j t' (ƛ t) = ƛ subₖ {Δ = Δ ▷ₜ T.sub i t' B}{_}{C}(isₜ j) t' {!t!}
+    -- Need context substitution too!
+  subₖ j t' (Λ t) = Λ subₖ (isₖ j) t' t
+  subₖ j t' (ne x) = {!!}
+
+  subSpₖ :
+    ∀ {Γ i Δ A B C}(j : Ix {Γ} i Δ)(t' : Ty (T.drop Γ i) A)
+    → Sp (insₖ Δ j A) B C → Sp Δ (T.sub i t' B) (T.sub i t' C)
+  subSpₖ j t' ε         = ε
+  subSpₖ j t' (x ∷ₜ sp) = subₖ j t' x          ∷ₜ subSpₖ j t' sp
+  subSpₖ j t' (t ∷ₖ sp) = T.sub (Ix-of j) t' t ∷ₖ {!subSpₖ j t' sp!} -- sub-sub commutation!
+
+  -- (T.sub iz (T.sub .i t' t) (T.sub (is .i) t' .B))
+  -- ≡ (T.sub .i t' (T.sub iz t .B))
+
+  -- B [0 := t] [i := t']
+  -- B [i + 1 := t'] [0 := t [i := t']]
+
+  subSpₜ : ∀ {Γ i Δ A B C}(j : Ix {Γ} i Δ) → Nf (drop Δ j) A → Sp (insₜ Δ j A) B C → Sp Δ B C
+  subSpₜ j t' ε         = ε
+  subSpₜ j t' (t ∷ₜ sp) = subₜ j t' t ∷ₜ subSpₜ j t' sp
+  subSpₜ j t' (t ∷ₖ sp) = t           ∷ₖ subSpₜ j t' sp
+
+  appSp : ∀ {Γ Δ A B} → Nf {Γ} Δ A → Sp Δ A B → Nf Δ B
+  appSp t     ε          = t
+  appSp (ƛ t) (t' ∷ₜ sp) = appSp (subₜ iz t' t) sp
+  appSp (Λ t) (t' ∷ₖ sp) = appSp (subₖ iz t' t) sp
 
 
 -- mutual
---   sub : ∀ {Γ A B} (i : Ix Γ) → Ty Γ A → Ty (ins Γ i A) B → Ty Γ B
+--   sub : ∀ {Γ A B} (i : Ix Γ) → Ty (drop Γ i) A → Ty (ins Γ i A) B → Ty Γ B
 --   sub i t' (A ⇒ B) = sub i t' A ⇒ sub i t' B
---   sub i t' (∀' A)  = ∀' (sub (is i) (ren top t') A)
---   sub i t' (ƛ t)   = ƛ (sub (is i) (ren top t') t)
+--   sub i t' (∀' A)  = ∀' sub (is i) t' A
+--   sub i t' (ƛ t)   = ƛ  sub (is i) t' t
 --   sub i t' (ne (v , sp)) with ∈-eq i v | subSp i t' sp
---   ... | inj₁ refl | sp' = appSp t' sp'
+--   ... | inj₁ refl | sp' = appSp (ren (drop-⊆ _ i) t') sp'
 --   ... | inj₂ v'   | sp' = ne (v' , sp')
 
---   subSp : ∀ {Γ A B C} (i : Ix Γ) → Ty Γ A → Sp (ins Γ i A) B C → Sp Γ B C
+--   subSp : ∀ {Γ A B C} (i : Ix Γ) → Ty (drop Γ i) A → Sp (ins Γ i A) B C → Sp Γ B C
 --   subSp i t' ε        = ε
 --   subSp i t' (t ∷ sp) = sub i t' t ∷ subSp i t' sp
 
 --   appSp : ∀ {Γ A B} → Ty Γ A → Sp Γ A B → Ty Γ B
 --   appSp t ε            = t
 --   appSp (ƛ t) (x ∷ sp) = appSp (sub iz x t) sp
-
--- inst : ∀ {Γ A B} → Ty Γ A → Ty (Γ ▷ A) B → Ty Γ B
--- inst = sub iz
-
-
 
