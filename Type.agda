@@ -1,14 +1,15 @@
-{-# OPTIONS --without-K #-}
 
 module SystemFOmega.Type where
 
-open import Data.Sum renaming (map to smap)
-open import Relation.Binary.PropositionalEquality
-open import Data.Product renaming (map to pmap)
-import Function as F
-open import Function using (_$_)
 open import Data.Empty
+open import Data.Product renaming (map to pmap)
+open import Data.Sum renaming (map to smap)
 open import Data.Unit
+open import Function using (_$_; _∋_)
+open import Relation.Binary.PropositionalEquality
+
+import Function as F
+import Relation.Binary.HeterogeneousEquality as H
 
 data Kind : Set where
   ⋆   : Kind
@@ -80,6 +81,18 @@ drop-sub-⊆ : ∀ {Γ A} (v : A ∈ Γ) → drop v ⊆ subᶜ v
 drop-sub-⊆ vz     = id
 drop-sub-⊆ (vs v) = add (drop-sub-⊆ v)
 
+⊆-drop : ∀ {Γ Δ A}(v : A ∈ Γ)(o : Γ ⊆ Δ) → drop v ⊆ drop (ren-∈ o v)
+⊆-drop  ()    stop
+⊆-drop  v     (add o)  = ⊆-drop v o
+⊆-drop  vz    (keep o) = o
+⊆-drop  (vs v)(keep o) = ⊆-drop v o
+
+⊆-subᶜ : ∀ {Γ Δ A}(v : A ∈ Γ)(o : Γ ⊆ Δ) → subᶜ v ⊆ subᶜ (ren-∈ o v)
+⊆-subᶜ ()     stop
+⊆-subᶜ v      (add o)  = add (⊆-subᶜ v o)
+⊆-subᶜ vz     (keep o) = o
+⊆-subᶜ (vs v) (keep o) = keep (⊆-subᶜ v o)
+
 ∈-eq : ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ Γ) → (A ≡ B) ⊎ (B ∈ subᶜ v)
 ∈-eq vz     vz      = inj₁ refl
 ∈-eq vz     (vs v') = inj₂ v'
@@ -105,9 +118,6 @@ mutual
 
 inst : ∀ {Γ A B} → Ty Γ A → Ty (Γ ▷ A) B → Ty Γ B
 inst = sub vz
-
--- normalization
---------------------------------------------------------------------------------
 
 snocSp : ∀ {Γ A B C} → Sp Γ A (B ⇒ C) → Ty Γ B → Sp Γ A C
 snocSp ε       t = t ∷ ε
@@ -177,39 +187,52 @@ mutual
   renSp-id ε        = refl
   renSp-id (t ∷ sp) = cong₂ _∷_ (ren-id t) (renSp-id sp)
 
+
 -- Properties
 --------------------------------------------------------------------------------
 
-inj₂-inj : ∀ {A B : Set}{x y : B} → ((A ⊎ B) F.∋ inj₂ x) ≡ inj₂ y → x ≡ y
-inj₂-inj refl = refl
+Fresh : ∀ {Γ Δ A} → Γ ⊆ Δ → A ∈ Δ → Set
+Fresh stop ()
+Fresh (add o)  vz     = ⊤
+Fresh (add o)  (vs v) = Fresh o v
+Fresh (keep o) vz     = ⊥
+Fresh (keep o) (vs v) = Fresh o v
 
-⊎-conflict : ∀ {A B : Set}{x : A}{y : B} → ((A ⊎ B) F.∋ inj₁ x) ≢ inj₂ y
-⊎-conflict ()
+Fresh-sub-⊆ : ∀ {Γ Δ A v} o → Fresh {Γ}{Δ}{A} o v → Γ ⊆ subᶜ v
+Fresh-sub-⊆ {v = vz}   (add o)  f = o
+Fresh-sub-⊆ {v = vz}   (keep o) ()
+Fresh-sub-⊆ {v = vs v} (add o)  f = add (Fresh-sub-⊆ o f)
+Fresh-sub-⊆ {v = vs v} (keep o) f = keep (Fresh-sub-⊆ o f)
 
--- ∈-eq-ins :
---   ∀ {Γ A} B i (v : A ∈ Γ) → ∈-eq i (ren-∈ (ins-⊆ Γ i B) v) ≡ inj₂ v
--- ∈-eq-ins A iz     vz     = refl
--- ∈-eq-ins A iz     (vs v) = cong (inj₂ F.∘ vs_) (ren-∈-id v)
--- ∈-eq-ins A (is i) vz     = refl
--- ∈-eq-ins A (is i) (vs v) = cong (smap F.id vs_) (∈-eq-ins A i v)
+fresh-∈-eq :
+ ∀ {Γ Δ A B}(o : Γ ⊆ Δ)(v : A ∈ Δ)(v' : B ∈ Γ)(f : Fresh o v)
+ → ∈-eq v (ren-∈ o v') ≡ inj₂ (ren-∈ (Fresh-sub-⊆ o f) v')
+fresh-∈-eq stop     ()     v' f
+fresh-∈-eq (keep o) vz     v' ()
+fresh-∈-eq (add o)  vz     v' f = refl
+fresh-∈-eq (keep o) (vs v) vz f = refl
+fresh-∈-eq (add o)  (vs v) v'      f rewrite fresh-∈-eq o v v' f = refl
+fresh-∈-eq (keep o) (vs v) (vs v') f rewrite fresh-∈-eq o v v' f = refl
 
--- mutual
---   sub-ren : ∀ {Γ A B} i (t' : Ty (drop Γ i) B)(t : Ty Γ A) → sub i t' (ren (ins-⊆ Γ i B) t) ≡ t
---   sub-ren i t' (A ⇒ B) = cong₂ _⇒_ (sub-ren i t' A) (sub-ren i t' B)
---   sub-ren i t' (∀' A)  = cong ∀'_ (sub-ren (is i) t' A)
---   sub-ren i t' (ƛ t)   = cong ƛ_  (sub-ren (is i) t' t)
---   sub-ren {B = B} i t' (ne (v , sp))
---     with ∈-eq i (ren-∈ (ins-⊆ _ i B) v) | inspect (∈-eq i) (ren-∈ (ins-⊆ _ i B) v)
---   ... | inj₂ v' | [ eq ] = cong₂ (λ x y → ne (x , y))
---      (inj₂-inj $ trans (sym eq) (∈-eq-ins B i v))
---      (subSp-ren i t' sp)
---   ... | inj₁ refl | [ eq ] with sym $ trans (sym $ ∈-eq-ins B i v) eq
---   ... | ()
+mutual
+  fresh-sub :
+    ∀ {Γ Δ A B} (o : Γ ⊆ Δ) (v : A ∈ Δ)(f : Fresh o v)(t' : Ty (drop v) A)(t : Ty Γ B)
+    → sub v t' (ren o t) ≡ ren (Fresh-sub-⊆ o f) t
+  fresh-sub o v f t' (A ⇒ B) rewrite fresh-sub o v f t' A | fresh-sub o v f t' B = refl
+  fresh-sub o v f t' (ƛ t)  = cong ƛ_ (fresh-sub (keep o) (vs v) f t' t)
+  fresh-sub o v f t' (∀' t) = cong ∀'_ (fresh-sub (keep o) (vs v) f t' t)
+  fresh-sub o v f t' (ne (v' , sp)) with ∈-eq v (ren-∈ o v') | fresh-∈-eq o v v' f
+  ... | inj₁ refl | ()
+  ... | inj₂ _    | refl = cong (λ x → ne (_ , x)) (fresh-sub-Sp o v f t' sp)
 
---   subSp-ren :
---     ∀ {Γ A B C} i (t' : Ty (drop Γ i) B)(sp : Sp Γ A C) → subSp i t' (renSp (ins-⊆ Γ i B) sp) ≡ sp
---   subSp-ren i t' ε        = refl
---   subSp-ren i t' (x ∷ sp) = cong₂ _∷_ (sub-ren i t' x) (subSp-ren i t' sp)
+  fresh-sub-Sp :
+    ∀ {Γ Δ A B C} (o : Γ ⊆ Δ) (v : A ∈ Δ)(f : Fresh o v)(t' : Ty (drop v) A)(sp : Sp Γ B C)
+    → subSp v t' (renSp o sp) ≡ renSp (Fresh-sub-⊆ o f) sp
+  fresh-sub-Sp o v f t' ε        = refl
+  fresh-sub-Sp o v f t' (x ∷ sp) = cong₂ _∷_ (fresh-sub o v f t' x) (fresh-sub-Sp o v f t' sp)
+
+inst-top : ∀ {Γ A B} (t' : Ty Γ A)(t : Ty Γ B) → inst t' (ren top t) ≡ t
+inst-top t' t = trans (fresh-sub top vz _ t' t) (ren-id t)
 
 --------------------------------------------------------------------------------
 
@@ -223,59 +246,100 @@ top-keep {B = B} t o rewrite
 
 --------------------------------------------------------------------------------
 
--- ∈-eq-ins-comm :
---   ∀ {Γ Δ A B}(o : Γ ⊆ Δ)(i : Ix Γ) {{p : Ins i o}}(v : A ∈ ins Γ i B)
---   → ∈-eq (ren-Ix o i) (ren-∈ (⊆-ins o i) v) ≡ ren-∈-Eq o (∈-eq i v)
--- ∈-eq-ins-comm o        iz     vz     = refl
--- ∈-eq-ins-comm o        iz     (vs v) = refl
--- ∈-eq-ins-comm (add o)  (is i) {{()}} vz
--- ∈-eq-ins-comm (keep o) (is i) vz     = refl
--- ∈-eq-ins-comm (add o)  (is i) {{()}} (vs v)
--- ∈-eq-ins-comm (keep o) (is i) (vs v)
---   with ∈-eq-ins-comm o i v | ∈-eq i v | inspect (∈-eq i) v
--- ... | rec | inj₁ _ | [ eq ] rewrite rec | eq = refl
--- ... | rec | inj₂ _ | [ eq ] rewrite rec | eq = refl
+ren-sub-∈ :
+  ∀ {Γ Δ A B}(o : Γ ⊆ Δ) (v : A ∈ Γ) (v' : B ∈ Γ)
+  → ∈-eq (ren-∈ o v) (ren-∈ o v') ≡ smap F.id (ren-∈ (⊆-subᶜ v o)) (∈-eq v v')
+ren-sub-∈ stop () v'
+ren-sub-∈ (add o) v v' with ren-sub-∈ o v v' | ∈-eq v v' | inspect (∈-eq v) v'
+... | rec | inj₁ x | [ eq ] rewrite rec | eq = refl
+... | rec | inj₂ y | [ eq ] rewrite rec | eq = refl
+ren-sub-∈ (keep o) (vs v) (vs v') with ren-sub-∈ o v v' | ∈-eq v v' | inspect (∈-eq v) v'
+... | rec | inj₁ x | [ eq ] rewrite rec | eq = refl
+... | rec | inj₂ y | [ eq ] rewrite rec | eq = refl
+ren-sub-∈ (keep o) vz    vz      = refl
+ren-sub-∈ (keep o) vz    (vs v') = refl
+ren-sub-∈ (keep o) (vs v) vz     = refl
 
--- drop-⊆-comm' :
---   ∀ {Γ Δ} (o : Γ ⊆ Δ) i {{_ : Ins i o}} →
---   (drop-⊆ Δ (ren-Ix o i) ∘ ⊆-drop o i) ≡ (o ∘ drop-⊆ Γ i)
--- drop-⊆-comm' o        iz     = trans (id-∘ o) (sym (∘-id o))
--- drop-⊆-comm' (keep o) (is i) = cong add (drop-⊆-comm' o i)
--- drop-⊆-comm' (add o)  (is i) {{()}}
+ren-drop-sub' :
+  ∀ {Γ Δ A}(o : Γ ⊆ Δ)(v : A ∈ Γ)
+  → (⊆-subᶜ v o ∘ drop-sub-⊆ v) ≡ (drop-sub-⊆ (ren-∈ o v) ∘ ⊆-drop v o)
+ren-drop-sub' stop ()
+ren-drop-sub' (add o)  v      = cong add (ren-drop-sub' o v)
+ren-drop-sub' (keep o) vz     = trans (∘-id o) (sym (id-∘ o))
+ren-drop-sub' (keep o) (vs v) = cong add (ren-drop-sub' o v)
 
--- drop-⊆-comm :
---   ∀ {Γ Δ A} (o : Γ ⊆ Δ) i {{_ : Ins i o}}(t : Ty (drop Γ i) A) →
---   ren (drop-⊆ Δ (ren-Ix o i)) (ren (⊆-drop o i) t) ≡ ren o (ren (drop-⊆ Γ i) t)
--- drop-⊆-comm {Γ}{Δ} o i t rewrite
---   ren-∘ o (drop-⊆ Γ i) t | ren-∘ (drop-⊆ Δ (ren-Ix o i)) (⊆-drop o i) t
---   = cong (λ x → ren x t) (drop-⊆-comm' o i)
+ren-drop-sub :
+  ∀ {Γ Δ A}(o : Γ ⊆ Δ)(v : A ∈ Γ)(t : Ty (drop v) A)
+  → ren (⊆-subᶜ v o) (ren (drop-sub-⊆ v) t) ≡ ren (drop-sub-⊆ (ren-∈ o v)) (ren (⊆-drop v o) t)
+ren-drop-sub o v t rewrite
+  ren-∘ (⊆-subᶜ v o) (drop-sub-⊆ v) t | ren-∘ (drop-sub-⊆ (ren-∈ o v)) (⊆-drop v o) t
+  = cong (λ x → ren x t) (ren-drop-sub' o v)
 
--- mutual
---   sub-ren-comm :
---     ∀ {Γ Δ A B}(o : Γ ⊆ Δ)(i : Ix Γ){{p : Ins i o}}(t' : Ty (drop Γ i) A)(t : Ty (ins Γ i A) B)
---     → ren o (sub i t' t) ≡ sub (ren-Ix o i) (ren (⊆-drop o i) t') (ren (⊆-ins o i) t)
---   sub-ren-comm o i t' (A ⇒ B) rewrite sub-ren-comm o i t' A | sub-ren-comm o i t' B = refl
---   sub-ren-comm o i t' (ƛ t)  = cong ƛ_  (sub-ren-comm (keep o) (is i) t' t)
---   sub-ren-comm o i t' (∀' t) = cong ∀'_ (sub-ren-comm (keep o) (is i) t' t)
---   sub-ren-comm o i t' (ne (v , sp)) with
---       ∈-eq (ren-Ix o i) (ren-∈ (⊆-ins o i) v) | ∈-eq-ins-comm o i v | ∈-eq i v | inspect (∈-eq i) v
---   ... | inj₁ refl | p | inj₁ refl | eq rewrite sym $ subSp-ren-comm o i t' sp | drop-⊆-comm  o i t'
---     = appSp-ren-comm o (ren (drop-⊆ _ i) t') (subSp i t' sp)
---   ... | inj₂ v'   | p | inj₂ _    | [ eq ] rewrite eq
---     = cong₂ (λ x y → ne (x , y)) (sym (inj₂-inj p)) (subSp-ren-comm o i t' sp)
---   ... | inj₁ x    | p | inj₂ y    | [ eq ] rewrite eq = ⊥-elim (⊎-conflict p)
---   ... | inj₂ y    | p | inj₁ x    | [ eq ] rewrite eq = ⊥-elim (⊎-conflict (sym p))
+mutual
+  ren-sub :
+    ∀ {Γ Δ A B} (v : A ∈ Γ) (o : Γ ⊆ Δ) t' (t : Ty Γ B)
+    → ren (⊆-subᶜ v o) (sub v t' t) ≡ sub (ren-∈ o v) (ren (⊆-drop v o) t') (ren o t)
+  ren-sub v o t' (A ⇒ B) rewrite ren-sub v o t' A | ren-sub v o t' B = refl
+  ren-sub v o t' (ƛ t)  = cong ƛ_  (ren-sub (vs v) (keep o) t' t)
+  ren-sub v o t' (∀' t) = cong ∀'_ (ren-sub (vs v) (keep o) t' t)
+  ren-sub v o t' (ne (v' , sp))
+    with ∈-eq (ren-∈ o v) (ren-∈ o v') | ∈-eq v v' | ren-sub-∈ o v v'
+  ... | inj₁ refl | inj₁ _    | refl rewrite
+    sym $ ren-sub-Sp v o t' sp | ren-sub-◇ (⊆-subᶜ v o) (ren (drop-sub-⊆ v) t') (subSp v t' sp)
+    = cong (_◇ renSp (⊆-subᶜ v o) (subSp v t' sp)) (ren-drop-sub o v t')
+  ... | inj₂ _    | inj₂ v''  | refl rewrite ren-sub-Sp v o t' sp = refl
+  ... | inj₁ refl | inj₂ _    | ()
+  ... | inj₂ _    | inj₁ refl | ()
 
---   subSp-ren-comm :
---     ∀ {Γ Δ A B C}(o : Γ ⊆ Δ)(i : Ix Γ){{p : Ins i o}}(t' : Ty (drop Γ i) A)(sp : Sp (ins Γ i A) B C)
---     → renSp o (subSp i t' sp) ≡ subSp (ren-Ix o i) (ren (⊆-drop o i) t') (renSp (⊆-ins o i) sp)
---   subSp-ren-comm o i t' ε        = refl
---   subSp-ren-comm o i t' (t ∷ sp) = cong₂ _∷_ (sub-ren-comm o i t' t ) (subSp-ren-comm o i t' sp)
+  ren-sub-Sp :
+    ∀ {Γ Δ A B C} (v : A ∈ Γ) (o : Γ ⊆ Δ) t' (sp : Sp Γ B C) →
+    renSp (⊆-subᶜ v o) (subSp v t' sp) ≡ subSp (ren-∈ o v) (ren (⊆-drop v o) t') (renSp o sp)
+  ren-sub-Sp v o t' ε        = refl
+  ren-sub-Sp v o t' (x ∷ sp) = cong₂ _∷_ (ren-sub v o t' x) (ren-sub-Sp v o t' sp)
 
---   appSp-ren-comm :
---     ∀ {Γ Δ A B} (o : Γ ⊆ Δ) (t : Ty Γ A)(sp : Sp Γ A B)
---     → ren o (appSp t sp) ≡ appSp (ren o t) (renSp o sp)
---   appSp-ren-comm o t     ε         = refl
---   appSp-ren-comm o (ƛ t) (t' ∷ sp) rewrite
---       appSp-ren-comm o (sub iz t' t) sp | sub-ren-comm o iz t' t = refl
+  ren-sub-◇ :
+    ∀ {Γ Δ A B}(o : Γ ⊆ Δ) (t : Ty Γ A) (sp : Sp Γ A B) →
+    ren o (t ◇ sp) ≡ ren o t ◇ renSp o sp
+  ren-sub-◇ o t     ε        = refl
+  ren-sub-◇ o (ƛ t) (x ∷ sp) rewrite
+    ren-sub-◇ o (inst x t) sp | ren-sub vz (keep o) x t = refl
+
+--------------------------------------------------------------------------------
+
+ixcong :
+  ∀ {I : Set}{A : I → Set}(B : ∀ {i} → A i → Set){i i'}{x : A i}{y : A i'}
+  → i ≡ i'
+  → (f : ∀ {i} (a : A i) → B a) → x H.≅ y → f x H.≅ f y
+ixcong B refl f H.refl = H.refl
+
+⊆-subᶜ-id : ∀ {Γ A} (v : A ∈ Γ) → ⊆-subᶜ v id H.≅ id {subᶜ v}
+⊆-subᶜ-id {Γ ▷ A} vz     = H.refl
+⊆-subᶜ-id {Γ ▷ A} (vs v) =
+  ixcong (λ {x} _ → (subᶜ v ▷ A) ⊆ (subᶜ x ▷ A)) (ren-∈-id v) keep (⊆-subᶜ-id v)
+
+⊆-drop-id : ∀ {Γ A}(v : A ∈ Γ) → ⊆-drop v id H.≅ id {drop v}
+⊆-drop-id vz     = H.refl
+⊆-drop-id (vs v) = ⊆-drop-id v
+
+ren-top-sub :
+  ∀ {Γ A B C}(v : A ∈ Γ) (t' : Ty (drop v) A) (t : Ty Γ B)
+  → ren (top {C}) (sub v t' t) ≡ sub (vs v) t' (ren (top {C}) t)
+ren-top-sub {Γ}{A}{B}{C} v t' t = H.≅-to-≡
+  (H.trans
+    (ixcong
+      (λ {x} _ → Ty (subᶜ x ▷ C) B)
+      (sym $ ren-∈-id v)
+      (λ r → ren (add r) (sub v t' t))
+      (H.sym (⊆-subᶜ-id v)))
+    (H.trans
+      (H.≡-to-≅ (ren-sub v top t' t))
+      (H.trans
+        (ixcong
+          (λ {x} _ → Ty (subᶜ x ▷ C) B)
+          (ren-∈-id v)
+          (λ {x} r → sub (vs x) (ren r t') (ren top t))
+          (⊆-drop-id v))
+        (H.cong
+          (λ x → sub (vs v) x (ren top t))
+          (H.≡-to-≅ (ren-id t'))))))
 

@@ -90,8 +90,9 @@ mutual
   renSp : ∀ {Γ Γ' Δ Ξ A B}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Sp Δ A B → Sp Ξ (T.ren o A) (T.ren o B)
   renSp o ε         = ε
   renSp o (x ∷ₜ sp) = ren o x ∷ₜ renSp o sp
-  renSp o (t ∷ₖ sp) =
-    T.ren (⊆-of o) t ∷ₖ subst (λ x → Sp _ x _) {!!}  (renSp o sp) -- ren-sub comm plz
+  renSp o (_∷ₖ_ {B = B} t sp) =
+   T.ren (⊆-of o) t ∷ₖ
+   subst (λ x → Sp _ x _) (ren-sub vz (keep (⊆-of o)) t B) (renSp o sp)
 
 ren' : ∀ {Γ Δ Ξ A} → Δ ⊆[ T.id ] Ξ → Nf {Γ} Δ A → Nf Ξ A
 ren' s t = subst (Nf _) (T.ren-id _) (ren s t)
@@ -176,15 +177,14 @@ undrop v t = subst (Nf _) (ren-drop v) (ren (drop-sub-⊆ v) t)
 ∈-sub :
   ∀ {Γ}{Δ : Con Γ}{κ A} (vk : κ T.∈ Γ)(t' : Ty (T.drop vk) κ)
   → A ∈ Δ → T.sub vk t' A ∈ subᶜᵏ vk t' Δ
-∈-sub {Δ = ε} vk t' ()
+∈-sub {Δ = ε}      _  _       ()
 ∈-sub {Δ = Δ ▷ₜ t} vz t'      vz      = vz
 ∈-sub {Δ = Δ ▷ₜ t} vz t'      (vsₜ v) = vsₜ ∈-sub vz t' v
 ∈-sub {Δ = Δ ▷ₜ A} (vs vk) t' vz      = vz
 ∈-sub {Δ = Δ ▷ₜ t} (vs vk) t' (vsₜ v) = vsₜ ∈-sub (vs vk) t' v
-∈-sub {Δ = Δ ▷ₖ κ} vz      t' (vsₖ v) =
-  subst (_∈ _) {!!} v -- sub-ren-id
-∈-sub {Δ = Δ ▷ₖ B} (vs vk) t' (vsₖ v) =
-  subst (_∈ _) {!!} (vsₖ (∈-sub vk t' v)) --sub-(ren-top) comm
+∈-sub {Δ = Δ ▷ₖ κ} vz      t' (vsₖ v) = subst (_∈ _) (sym (inst-top t' _)) v
+∈-sub {Δ = Δ ▷ₖ B} (vs vk) t' (vsₖ_ {A = A} v) =
+   subst (_∈ _) (ren-top-sub vk t' A) (vsₖ (∈-sub vk t' v))
 
 mutual
   η : ∀ {Γ Δ A} → A ∈ Δ → Nf {Γ} Δ A
@@ -235,9 +235,6 @@ mutual
   t     ◇ ε          = t
   (ƛ t) ◇ (t' ∷ₜ sp) = subₜ vz t' t ◇ sp
   (Λ t) ◇ (k  ∷ₖ sp) = subₖ vz k  t ◇ sp
-
-inst : ∀ {Γ Δ A B} → Nf {Γ} Δ A → Nf {Γ} (Δ ▷ₜ A) B → Nf Δ B
-inst = subₜ vz
 
 nf : ∀ {Γ Δ A} → Tm {Γ} Δ A → Nf Δ A
 nf (var v)  = η v
