@@ -5,6 +5,7 @@ open import SystemFOmega.Type
   hiding (Con; _∈_; ren-∈; id; Ne; η-Ne; η; Sp; ren;
           renSp; sub; drop;  ∈-eq; subSp; subᶜ; _◇_; drop-sub-⊆; inst)
 import SystemFOmega.Type as T
+open import SystemFOmega.TypeProofs
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Product
@@ -212,8 +213,8 @@ mutual
     → Sp {Γ} Δ B C → Sp (subᶜᵏ v t' Δ) (T.sub v t' B) (T.sub v t' C)
   subSpₖ v t' ε         = ε
   subSpₖ v t' (t ∷ₜ sp) = subₖ  v t' t ∷ₜ subSpₖ v t' sp
-  subSpₖ v t' (k ∷ₖ sp) = T.sub v t' k ∷ₖ
-    subst (λ x → Sp _ x _) {!drop-sub-⊆ !} (subSpₖ v t' sp) -- sub-sub comm plz
+  subSpₖ v t' (_∷ₖ_ {B = B} k sp) = T.sub v t' k ∷ₖ
+    subst (λ x → Sp _ x _) {!T.sub vz k B!} (subSpₖ v t' sp) -- sub-sub comm plz
 
 mutual
   {-# TERMINATING #-} -- and why?? The call graph is the same as in STLC sub
