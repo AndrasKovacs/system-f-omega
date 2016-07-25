@@ -171,117 +171,79 @@ ren-top-sub {Γ}{A}{B}{C} v t' t = H.≅-to-≡
           (λ x → sub (vs v) x (ren top t))
           (H.≡-to-≅ (ren-id t'))))))
 
--- Substitution commutes with substitution
+
+-- Coercion
 --------------------------------------------------------------------------------
 
--- T.sub v t' (T.sub vz k .B) ≡
--- T.sub vz (T.sub v t' k) (T.sub (vs v) t' .B)
+infixr 6 _=>_ _=>-∈_ _=>-Sp_
 
--- sub-∈ : ∀ {Γ A B} (v : A ∈ Γ)(v' : B ∈ subᶜ v) → A ∈ subᶜ (ren-∈ (subᶜ-⊆ v) v')
--- sub-∈ vz     v'      = vz
--- sub-∈ (vs v) vz      = v
--- sub-∈ (vs v) (vs v') = vs sub-∈ v v'
+▷-inj₁ : ∀ {Γ Δ A B} → (Γ ▷ A) ≡ (Δ ▷ B) → Γ ≡ Δ
+▷-inj₁ refl = refl
 
--- exc : ∀ {Γ A B} (v : A ∈ Γ)(v' : B ∈ subᶜ v) → subᶜ (sub-∈ v v') ≡ subᶜ v'
--- exc vz     v'      = cong subᶜ (ren-∈-id v')
--- exc (vs v) vz      = refl
--- exc (vs v) (vs v') = cong (_▷ _) (exc v v')
+_=>-∈_ : ∀ {Γ Δ A} → Γ ≡ Δ → A ∈ Γ → A ∈ Δ
+_=>-∈_ refl vz = vz
+_=>-∈_ {Γ ▷ B}{Δ ▷ C} eq (vs v) = vs (▷-inj₁ eq =>-∈ v)
 
--- exc→ : ∀ {Γ A B C} (v : A ∈ Γ)(v' : B ∈ subᶜ v) → Ty (subᶜ (sub-∈ v v')) C → Ty (subᶜ v') C
--- exc→ v v' = subst (λ x → Ty x _) (exc v v')
+mutual
+  _=>_ : ∀ {Γ Δ A} → Γ ≡ Δ → Ty Γ A → Ty Δ A
+  eq => (A ⇒ B)       = eq => A ⇒ eq => B
+  eq => (ƛ t)         = ƛ  (cong (_▷ _) eq => t)
+  eq => (∀' t)        = ∀' (cong (_▷ _) eq => t)
+  eq => (ne (v , sp)) = ne (eq =>-∈ v , eq =>-Sp sp)
 
--- exc← : ∀ {Γ A B C} (v : A ∈ Γ)(v' : B ∈ subᶜ v) → Ty (subᶜ v') C → Ty (subᶜ (sub-∈ v v')) C
--- exc← v v' = subst (λ x → Ty x _) (sym $ exc v v')
+  _=>-Sp_ : ∀ {Γ Δ A B} → Γ ≡ Δ → Sp Γ A B → Sp Δ A B
+  _=>-Sp_ eq ε        = ε
+  _=>-Sp_ eq (t ∷ sp) = eq => t ∷ eq =>-Sp sp
 
-
-
+-- Substitution commutes with instantiation
+--------------------------------------------------------------------------------
 
 drop-drop-sub :
-  ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ drop v)
-  → drop (ren-∈ (drop-sub-⊆ v) v') ≡ drop v'
-drop-drop-sub vz     v' = cong drop (ren-∈-id v')
-drop-drop-sub (vs v) v' = drop-drop-sub v v'
-
-drop-drop-sub← :
-  ∀ {Γ A B C}(v : A ∈ Γ){v' : B ∈ drop v}
-  → Ty (drop v') C → Ty (drop (ren-∈ (drop-sub-⊆ v) v')) C
-drop-drop-sub← v {v'} = subst (λ x → Ty x _) (sym $ drop-drop-sub v v')
+  ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v}
+  → drop v' ≡ drop (ren-∈ (drop-sub-⊆ v) v')
+drop-drop-sub vz     {v'} = cong drop (sym $ ren-∈-id v')
+drop-drop-sub (vs v) {v'} = drop-drop-sub v
 
 drop-drop :
-  ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ drop v)
-  → drop (ren-∈ (drop-⊆ v) v') ≡ drop v'
-drop-drop vz     v' = cong drop (ren-∈-id v')
-drop-drop (vs v) v' = drop-drop v v'
-
-drop-drop← :
-  ∀ {Γ A B C}(v : A ∈ Γ){v' : B ∈ drop v}
-  → Ty (drop v') C → Ty (drop (ren-∈ (drop-⊆ v) v')) C
-drop-drop← v {v'} = subst (λ x → Ty x _) (sym $ drop-drop v v')
+  ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v}
+  → drop v' ≡ drop (ren-∈ (drop-⊆ v) v')
+drop-drop vz     {v'} = cong drop (sym $ ren-∈-id v')
+drop-drop (vs v) {v'} = drop-drop v
 
 _-_ : ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ drop v) → A ∈ subᶜ (ren-∈ (drop-⊆ v) v')
 _-_ vz     v' = vz
 _-_ (vs v) v' = vs (v - v')
 
-drop- : ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ drop v) → drop (v - v') ≡ subᶜ v'
-drop- vz     v' = cong subᶜ (ren-∈-id v')
-drop- (vs v) v' = drop- v v'
-
-drop-← : ∀ {Γ A B C}(v : A ∈ Γ){v' : B ∈ drop v} → Ty (subᶜ v') C → Ty (drop (v - v')) C
-drop-← v {v'} = subst (λ x → Ty x _) (sym $ drop- v v')
+drop- : ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v} →  subᶜ v' ≡ drop (v - v')
+drop- vz     {v'} = cong subᶜ (sym $ ren-∈-id v')
+drop- (vs v) {v'} = drop- v
 
 exc :
-  ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ drop v)
-  → subᶜ (ren-∈ (drop-sub-⊆ v) v') ≡ subᶜ (v - v')
-exc vz     v' = refl
-exc (vs v) v' = cong (_▷ _) (exc v v')
-
-exc← :
-  ∀ {Γ A B C}(v : A ∈ Γ){v' : B ∈ drop v}
-  → Ty (subᶜ (v - v')) C → Ty (subᶜ (ren-∈ (drop-sub-⊆ v) v')) C
-exc← v {v'} = subst (λ x → Ty x _) (sym (exc v v'))
-
--- commutations for coercion, LOL
+  ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v}
+  → subᶜ (v - v') ≡ subᶜ (ren-∈ (drop-sub-⊆ v) v')
+exc vz     {v'} = refl
+exc (vs v) {v'} = cong (_▷ _) (exc v)
 
 sub-inst :
   ∀ {Γ A B C}
-    (v₁ : A ∈ Γ)
-    (v₂ : B ∈ drop v₁)
-    (t₁ : Ty (drop v₁) A)
-    (t₂ : Ty (drop v₂) B)
+    (v₁ : A ∈ Γ)(v₂ : B ∈ drop v₁)
+    (t₁ : Ty (drop v₁) A)(t₂ : Ty (drop v₂) B)
     (t  : Ty Γ C)
-  → sub (ren-∈ (drop-sub-⊆ v₁) v₂) (drop-drop-sub← v₁ t₂) (sub v₁ t₁ t)
-  ≡ exc← v₁ (sub (v₁ - v₂) (drop-← v₁ (sub v₂ t₂ t₁))
-    (sub (ren-∈ (drop-⊆ v₁) v₂) (drop-drop← v₁ t₂) t))
-sub-inst v₁ v₂ t₁ t₂ (A ⇒ B) = {!!}
-
-sub-inst v₁ v₂ t₁ t₂ (ƛ t) = {!!}
-sub-inst v₁ v₂ t₁ t₂ (∀' t) = {!!}
-sub-inst v₁ v₂ t₁ t₂ (ne x) = {!!}
-
-
--- -- sub v₂ t₂ (sub v₁ t₁ t) ≡ sub v₁ t₁ (sub v₂ t₂ t)
+  → sub (ren-∈ (drop-sub-⊆ v₁) v₂) (drop-drop-sub v₁ => t₂) (sub v₁ t₁ t)
+  ≡ exc v₁ => (sub (v₁ - v₂) (drop- v₁ => sub v₂ t₂ t₁)
+    (sub (ren-∈ (drop-⊆ v₁) v₂) (drop-drop v₁ => t₂) t))
+sub-inst v₁ v₂ t₁ t₂ (A ⇒ B) = cong₂ _⇒_ (sub-inst v₁ v₂ t₁ t₂ A) (sub-inst v₁ v₂ t₁ t₂ B)
+sub-inst v₁ v₂ t₁ t₂ (ƛ  t)  = cong ƛ_  (sub-inst (vs v₁) v₂ t₁ t₂ t )
+sub-inst v₁ v₂ t₁ t₂ (∀' t)  = cong ∀'_ (sub-inst (vs v₁) v₂ t₁ t₂ t)
+sub-inst v₁ v₂ t₁ t₂ (ne (v , sp)) = {!!}
 
 
--- sub-sub :
---   ∀ {Γ A B C}
---     (v₁ : A ∈ Γ)(v₂ : B ∈ subᶜ v₁)
---     (t₁ : Ty (drop v₁) A)(t₂ : Ty (drop v₂) B) (t : Ty Γ C)
---   → sub v₂ t₂ (sub v₁ t₁ t)
---   ≡  let +v₁ = subᶜ-⊆ v₁
---          x = sub (ren-∈ +v₁ v₂) (ren (⊆-drop v₂ +v₁) t₂) t
---          z = sub v₂ t₂ (ren (drop-sub-⊆ v₁) t₁)
---          y : Ty (subᶜ (sub-∈ v₁ v₂)) C
---          y = sub (sub-∈ v₁ v₂) {!!} x
+-- -- seems good
 
--- -- sub v₂ t₂ (sub v₁ t₁ t) ≡ sub v₁ (sub v₂ t₂ t₁) (sub v₂ t₂ t)
--- --                                   ˇ---> sub the sub
-
--- -- We need the extra sub, however, v₂ can be in drop v₁ instead of subᶜ v₁
-
---      in exc→ v₁ v₂ y
--- sub-sub = {!sub-∈!}
-
-
-
-
+-- the-eventual-goal :
+--   ∀ {Γ A}(v : A ∈ Γ) t₁ t₂ (t : Ty (Γ ▷ A) ⋆) →
+--   sub v t₂ (inst t₁ t) ≡ inst (sub v t₂ t₁) (sub (vs v) t₂ t)
+-- foo v t₁ t₂ t = {! sub-inst vz v t₁ t₂ t !}
+--  where x = {!drop-drop-sub← vz t₂!}
+--        y = {!sub v t₂ t₁!}
 
