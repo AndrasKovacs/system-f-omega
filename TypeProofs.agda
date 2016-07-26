@@ -13,7 +13,7 @@ open import Relation.Binary.PropositionalEquality
 import Function as F
 import Relation.Binary.HeterogeneousEquality as H
 
--- Substituting for a newly added variable does nothing
+-- Substituting a newly added variable does nothing
 --------------------------------------------------------------------------------
 
 Fresh : ∀ {Γ Δ A} → Γ ⊆ Δ → A ∈ Δ → Set
@@ -195,6 +195,23 @@ mutual
   _=>-Sp_ eq ε        = ε
   _=>-Sp_ eq (t ∷ sp) = eq => t ∷ eq =>-Sp sp
 
+=>-∈-refl : ∀ {Γ A}(v : A ∈ Γ) → (refl =>-∈ v) ≡ v
+=>-∈-refl vz     = refl
+=>-∈-refl (vs v) = cong vs_ (=>-∈-refl v)
+
+mutual
+  =>-refl : ∀ {Γ A}(t : Ty Γ A) → (refl => t) ≡ t
+  =>-refl (A ⇒ B)       = cong₂ _⇒_ (=>-refl A) (=>-refl B)
+  =>-refl (ƛ t)         = cong ƛ_ (=>-refl t)
+  =>-refl (∀' t)        = cong ∀'_ (=>-refl t)
+  =>-refl (ne (v , sp)) = cong₂ (λ x y → ne (x , y)) (=>-∈-refl v) (=>-Sp-refl sp)
+
+  =>-Sp-refl : ∀ {Γ A B} (sp : Sp Γ A B) → (refl =>-Sp sp) ≡ sp
+  =>-Sp-refl ε        = refl
+  =>-Sp-refl (x ∷ sp) = cong₂ _∷_ (=>-refl x) (=>-Sp-refl sp)
+
+-- TODO? coe commuting with subst, _◇_, ren
+
 -- Substitution commutes with instantiation
 --------------------------------------------------------------------------------
 
@@ -214,9 +231,9 @@ _-_ : ∀ {Γ A B}(v : A ∈ Γ)(v' : B ∈ drop v) → A ∈ subᶜ (ren-∈ (d
 _-_ vz     v' = vz
 _-_ (vs v) v' = vs (v - v')
 
-drop- : ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v} →  subᶜ v' ≡ drop (v - v')
-drop- vz     {v'} = cong subᶜ (sym $ ren-∈-id v')
-drop- (vs v) {v'} = drop- v
+sub-drop- : ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v} →  subᶜ v' ≡ drop (v - v')
+sub-drop- vz     {v'} = cong subᶜ (sym $ ren-∈-id v')
+sub-drop- (vs v) {v'} = sub-drop- v
 
 exc :
   ∀ {Γ A B}(v : A ∈ Γ){v' : B ∈ drop v}
@@ -224,26 +241,65 @@ exc :
 exc vz     {v'} = refl
 exc (vs v) {v'} = cong (_▷ _) (exc v)
 
-sub-inst :
-  ∀ {Γ A B C}
-    (v₁ : A ∈ Γ)(v₂ : B ∈ drop v₁)
-    (t₁ : Ty (drop v₁) A)(t₂ : Ty (drop v₂) B)
-    (t  : Ty Γ C)
-  → sub (ren-∈ (drop-sub-⊆ v₁) v₂) (drop-drop-sub v₁ => t₂) (sub v₁ t₁ t)
-  ≡ exc v₁ => (sub (v₁ - v₂) (drop- v₁ => sub v₂ t₂ t₁)
-    (sub (ren-∈ (drop-⊆ v₁) v₂) (drop-drop v₁ => t₂) t))
-sub-inst v₁ v₂ t₁ t₂ (A ⇒ B) = cong₂ _⇒_ (sub-inst v₁ v₂ t₁ t₂ A) (sub-inst v₁ v₂ t₁ t₂ B)
-sub-inst v₁ v₂ t₁ t₂ (ƛ  t)  = cong ƛ_  (sub-inst (vs v₁) v₂ t₁ t₂ t )
-sub-inst v₁ v₂ t₁ t₂ (∀' t)  = cong ∀'_ (sub-inst (vs v₁) v₂ t₁ t₂ t)
-sub-inst v₁ v₂ t₁ t₂ (ne (v , sp)) = {!!}
+
+-- bring the "one var eq, one var non-eq" cases to common form?
+-- simplify big renamings
+
+-- push outer sub into _◇_
+
+mutual
+  sub-inst :
+    ∀ {Γ A B C}
+      (v₁ : A ∈ Γ)(v₂ : B ∈ drop v₁)
+      (t₁ : Ty (drop v₁) A)(t₂ : Ty (drop v₂) B)
+      (t  : Ty Γ C)
+    → sub (ren-∈ (drop-sub-⊆ v₁) v₂) (drop-drop-sub v₁ => t₂) (sub v₁ t₁ t)
+    ≡
+      exc v₁ => (sub (v₁ - v₂) (sub-drop- v₁ => sub v₂ t₂ t₁)
+      (sub (ren-∈ (drop-⊆ v₁) v₂) (drop-drop v₁ => t₂) t))
+  sub-inst v₁ v₂ t₁ t₂ (A ⇒ B) = cong₂ _⇒_ (sub-inst v₁ v₂ t₁ t₂ A) (sub-inst v₁ v₂ t₁ t₂ B)
+  sub-inst v₁ v₂ t₁ t₂ (ƛ  t)  = cong ƛ_  (sub-inst (vs v₁) v₂ t₁ t₂ t )
+  sub-inst v₁ v₂ t₁ t₂ (∀' t)  = cong ∀'_ (sub-inst (vs v₁) v₂ t₁ t₂ t)
+  sub-inst v₁ v₂ t₁ t₂ (ne (v , sp))
+    with ∈-eq v₁ v | ∈-eq (ren-∈ (drop-⊆ v₁) v₂) v
+  sub-inst v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₁ refl | inj₁ refl = {!!} -- impossible
+  sub-inst v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₁ refl | inj₂ v''
+    with ∈-eq (v₁ - v₂) v''
+  ... | inj₁ refl = {!!}
+  ... | inj₂ y    = {!!} -- impossible
+  sub-inst v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v'   | inj₁ refl
+    with ∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂) v'
+  ... | inj₁ refl = {!!}
+  ... | inj₂ _    = {!!} -- impossible
+  sub-inst v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v'   | inj₂ v'' -- v , v' and v'' are index-equal
+    with ∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂) v' |
+         ∈-eq (v₁ - v₂) v'' -- therefore these must be inj₂ too
+  ... | inj₁ x | inj₁ x₁ = {!!} -- impossible
+  ... | inj₁ x | inj₂ y  = {!!} -- impossible
+  ... | inj₂ y | inj₁ x  = {!!} -- impossible
+  ... | inj₂ w' | inj₂ w'' =
+    cong₂ (λ x y → ne (x , y)) {!!} (sub-inst-sp v₁ v₂ t₁ t₂ sp)
+
+  sub-inst-sp :
+    ∀ {Γ A B C D}
+      (v₁ : A ∈ Γ)(v₂ : B ∈ drop v₁)
+      (t₁ : Ty (drop v₁) A)(t₂ : Ty (drop v₂) B)
+      (sp : Sp Γ C D)
+    → subSp (ren-∈ (drop-sub-⊆ v₁) v₂) (drop-drop-sub v₁ => t₂) (subSp v₁ t₁ sp)
+    ≡
+      exc v₁ =>-Sp subSp (v₁ - v₂) (sub-drop- v₁ => sub v₂ t₂ t₁)
+      (subSp (ren-∈ (drop-⊆ v₁) v₂) (drop-drop v₁ => t₂) sp)
+  sub-inst-sp v₁ v₂ t₁ t₂ ε        = refl
+  sub-inst-sp v₁ v₂ t₁ t₂ (t ∷ sp) =
+    cong₂ _∷_ (sub-inst v₁ v₂ t₁ t₂ t) (sub-inst-sp v₁ v₂ t₁ t₂ sp)
 
 
 -- -- seems good
 
--- the-eventual-goal :
---   ∀ {Γ A}(v : A ∈ Γ) t₁ t₂ (t : Ty (Γ ▷ A) ⋆) →
---   sub v t₂ (inst t₁ t) ≡ inst (sub v t₂ t₁) (sub (vs v) t₂ t)
--- foo v t₁ t₂ t = {! sub-inst vz v t₁ t₂ t !}
---  where x = {!drop-drop-sub← vz t₂!}
---        y = {!sub v t₂ t₁!}
+the-eventual-goal :
+  ∀ {Γ A}(v : A ∈ Γ) t₁ t₂ (t : Ty (Γ ▷ A) ⋆) →
+  sub v t₂ (inst t₁ t) ≡ inst (sub v t₂ t₁) (sub (vs v) t₂ t)
+the-eventual-goal v t₁ t₂ t = {! sub-inst vz v t₁ t₂ t !}
+ where x = {!drop-drop-sub← vz t₂!}
+       y = {!ren-∈-id !}
 
