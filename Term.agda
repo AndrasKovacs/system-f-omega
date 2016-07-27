@@ -205,7 +205,7 @@ mutual
   subSpₖ v t' ε         = ε
   subSpₖ v t' (t ∷ₜ sp) = subₖ  v t' t ∷ₜ subSpₖ v t' sp
   subSpₖ v t' (_∷ₖ_ {B = B} k sp) = T.sub v t' k ∷ₖ
-    subst (λ x → Sp _ x _) {!T.sub vz k B!} (subSpₖ v t' sp) -- sub-sub comm plz
+    subst (λ x → Sp _ x _) (sub-inst v k t' B) (subSpₖ v t' sp)
 
 mutual
   {-# TERMINATING #-} -- and why?? The call graph is the same as in STLC sub

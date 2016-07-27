@@ -180,20 +180,6 @@ remove-Fresh- :
 remove-Fresh- vz     v' = refl
 remove-Fresh- (vs v) v' = cong add (remove-Fresh- v v')
 
-
--- ∈-lem₁ :
---   ∀ {Γ A}(v : A ∈ Γ)(v₁ : A ∈ Γ)(v₂ : A ∈ drop v₁)
---   → ∈-eq v₁ v ≡ inj₁ refl → ∈-eq (ren-∈ (drop-⊆ v₁) v₂) v ≢ inj₁ refl
--- ∈-lem₁ vz vz v₂ p1 ()
--- ∈-lem₁ vz (vs v₁) v₂ p1 ()
--- ∈-lem₁ (vs v) vz v₂ () p2
--- ∈-lem₁ (vs v) (vs v₁) v₂ p1 p2 with
---   ∈-eq (ren-∈ (drop-⊆ v₁) v₂) v | inspect (∈-eq (ren-∈ (drop-⊆ v₁) v₂)) v
--- ∈-lem₁ (vs v) (vs v₁) v₂ p1 () | inj₂ _    | _
--- ∈-lem₁ (vs v) (vs v₁) v₂ p1 p2 | inj₁ refl | [ eq ] with ∈-eq v₁ v | inspect (∈-eq v₁) v
--- ∈-lem₁ (vs v) (vs v₁) v₂ () p2 | inj₁ refl | _ | inj₂ _ | _
--- ... | inj₁ refl | [ eq2 ] = ∈-lem₁ v v₁ v₂ eq2 eq
-
 sub-sub-∈ :
   ∀ {Γ A B C}(v : A ∈ Γ)(v₁ : B ∈ Γ)(v₂ : C ∈ drop v₁)
 
@@ -211,29 +197,35 @@ sub-sub-∈ :
      → ∈-eq v₁ v ≡ inj₂ v'
      × ∈-eq (v₁ - v₂) v'' ≡ inj₂ w'
      × ∈-eq (ren-∈ (drop-⊆ v₁) v₂) v ≡ inj₂ v''
-     × ∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂) v' ≡ inj₂ w'')
+     × ∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂) v' ≡ inj₂ w''
+     × w'' ≡ ren-∈ (exc v₁) w')
 
 sub-sub-∈ vz          vz           _       = inj₁ (refl , vz , refl , refl , refl)
-sub-sub-∈ vz          (vs vz)      vz      = inj₂ (inj₂ (vz , vz , vz , vz , refl , refl , refl , refl))
-sub-sub-∈ vz          (vs vz)      (vs v₂) = inj₂ (inj₂ (vz , vz , vz , vz , refl , refl , refl , refl))
-sub-sub-∈ vz          (vs (vs v₁)) v₂      = inj₂ (inj₂ (vz , vz , vz , vz , refl , refl , refl , refl))
+sub-sub-∈ vz          (vs vz)      vz      = inj₂ (inj₂ (vz , vz , vz , vz , refl , refl , refl , refl , refl))
+sub-sub-∈ vz          (vs vz)      (vs v₂) = inj₂ (inj₂ (vz , vz , vz , vz , refl , refl , refl , refl , refl))
+sub-sub-∈ vz          (vs (vs v₁)) v₂      = inj₂ (inj₂ (vz , vz , vz , vz , refl , refl , refl , refl , refl))
 sub-sub-∈ (vs vz)     vz           vz      = inj₂ (inj₁ (refl , vz , refl , refl , refl))
-sub-sub-∈ (vs (vs v)) vz           vz      = inj₂ (inj₂ ((vs v) , (vs v) , v , v , refl , refl , refl , refl))
+sub-sub-∈ (vs (vs v)) vz           vz      = inj₂ (inj₂ ((vs v) , (vs v) , v , v , refl , refl , refl , refl , refl))
 sub-sub-∈ (vs v) vz (vs v₂) with sub-sub-∈ v vz v₂
 ... | inj₁ (p , v'' , a , b , c)
-  = inj₂ (inj₂ (v , (vs v'') , v'' , v'' , refl , refl , vs-∈-≡ b , b))
+  = inj₂ (inj₂ (v , (vs v'') , v'' , v'' , refl , refl , vs-∈-≡ b , b , refl))
 ... | inj₂ (inj₁ (p , v' , a , b , c))
   = inj₂ (inj₁ (p , v , refl , vs-∈-≡ b , b ))
 ... | inj₂ (inj₂ (v' , v'' , w' , w'' , a , b , c , d))
-  = inj₂ (inj₂ (v , (vs v'') , v'' , v'' , refl , refl , vs-∈-≡ c , c))
+  = inj₂ (inj₂ (v , (vs v'') , v'' , v'' , refl , refl , vs-∈-≡ c , c , refl))
 sub-sub-∈ (vs v) (vs v₁) v₂ with sub-sub-∈ v v₁ v₂
 ... | inj₁ (p , v'' , a , b , c)
   = inj₁ (p , (vs v'') , vs-∈-≡ a , vs-∈-≡ b , vs-∈-≡ c)
 ... | inj₂ (inj₁ (p , v' , a , b , c))
   = inj₂ (inj₁ (p , (vs v') , vs-∈-≡ a , vs-∈-≡ b , vs-∈-≡ c))
-... | inj₂ (inj₂ (v' , v'' , w' , w'' , a , b , c , d))
-  = inj₂ (inj₂ ((vs v') , (vs v'') , (vs w') , (vs w'') , vs-∈-≡ a , vs-∈-≡ b , vs-∈-≡ c , vs-∈-≡ d))
+... | inj₂ (inj₂ (v' , v'' , w' , w'' , a , b , c , d , e))
+  = inj₂ (inj₂ ((vs v') , (vs v'') , (vs w') , (vs w'') , vs-∈-≡ a , vs-∈-≡ b , vs-∈-≡ c , vs-∈-≡ d , cong vs_ e))
 
+⊎-conflict : ∀ {A B : Set}{x : A}{y : B} → ((A ⊎ B) ∋ inj₁ x) ≢ inj₂ y
+⊎-conflict ()
+
+inj₂-inj : ∀ {A B : Set}{x y : B} → ((A ⊎ B) ∋ inj₂ x) ≡ inj₂ y → x ≡ y
+inj₂-inj refl = refl
 
 mutual
   sub-sub :
@@ -245,6 +237,7 @@ mutual
     ≡
       ren (exc v₁) (sub (v₁ - v₂) (ren (sub-drop- v₁) (sub v₂ t₂ t₁))
       (sub (ren-∈ (drop-⊆ v₁) v₂) (ren (drop-drop v₁) t₂) t))
+
   sub-sub v₁ v₂ t₁ t₂ (A ⇒ B) = cong₂ _⇒_ (sub-sub v₁ v₂ t₁ t₂ A) (sub-sub v₁ v₂ t₁ t₂ B)
   sub-sub v₁ v₂ t₁ t₂ (ƛ  t)  = cong ƛ_  (sub-sub (vs v₁) v₂ t₁ t₂ t )
   sub-sub v₁ v₂ t₁ t₂ (∀' t)  = cong ∀'_ (sub-sub (vs v₁) v₂ t₁ t₂ t)
@@ -253,14 +246,18 @@ mutual
       with
         ∈-eq v₁ v
       | ∈-eq (ren-∈ (drop-⊆ v₁) v₂) v
-      | inspect (∈-eq v₁) v
-      | inspect (∈-eq (ren-∈ (drop-⊆ v₁) v₂)) v
-  ... | inj₁ refl | inj₁ refl | [ eq-v₁ ] | [ eq-v₂ ] = ⊥-elim {!!}
-  ... | inj₁ refl | inj₂ v''  | [ eq-v₁ ] | [ eq-v₂ ]
+      | sub-sub-∈ v v₁ v₂
+
+  ... | inj₁ _    | inj₁ _   | inj₁ (_ , _ , _ , () , _)
+  ... | inj₁ _    | inj₁ _   | inj₂ (inj₁ (_ , _ , () , _))
+  ... | inj₁ _    | inj₁ _   | inj₂ (inj₂ (_ , _ , _ , _ , () , _))
+  ... | inj₁ refl | inj₂ v'' | ∈-info
       with
-        ∈-eq (v₁ - v₂) v''
-      | inspect (∈-eq (v₁ - v₂)) v''
-  ... | inj₂ _    | [ eq-v₁-v₂ ] = ⊥-elim {! !}
+        ∈-eq (v₁ - v₂) v'' | inspect (∈-eq (v₁ - v₂)) v''
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₁ refl | inj₂ _ | inj₁ (_ , _ , _ , refl , c)          | inj₂ _ | [ eq ]
+    = ⊥-elim (⊎-conflict (trans (sym c) eq))
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₁ refl | inj₂ _ | inj₂ (inj₁ (_ , _ , () , _))         | inj₂ _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₁ refl | inj₂ _ | inj₂ (inj₂ (_ , _ , _ , _ , () , _)) | inj₂ _ | _
   ... | inj₁ refl | _
       rewrite
         ren-∘ (drop-sub-⊆ (v₁ - v₂)) (sub-drop- v₁) (sub v₂ t₂ t₁)
@@ -281,11 +278,14 @@ mutual
       | sym $ ren-sub v₂ (drop-sub-⊆ v₁) t₂ t₁
       = refl
 
-  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₁ refl | [ eq-v₁ ] | [ eq-v₂ ]
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₁ refl | ∈-info
       with
         ∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂) v'
       | inspect (∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂)) v'
-  ... | inj₂ _    | [ eq-v₂' ] = ⊥-elim {!!}
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₁ refl | inj₁ (_ , _ , () , _)              | inj₂ _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₁ refl | inj₂ (inj₁ (_ , _ , refl , _ , p)) | inj₂ _ | [ eq ]
+    = ⊥-elim (⊎-conflict (trans (sym p) eq))
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₁ refl | inj₂ (inj₂ (_ , _ , _ , _ , _ , _ , () , _)) | inj₂ y | _
   ... | inj₁ refl | _
       rewrite
         ren-∘ (drop-sub-⊆ (ren-∈ (drop-sub-⊆ v₁) v₂))
@@ -320,17 +320,31 @@ mutual
       | remove-Fresh- v₁ v₂
       = refl
 
-  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₂ v'' | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ v' | inj₂ v'' | ∈-info
       with
         ∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂) v'
       | ∈-eq (v₁ - v₂) v''
       | inspect (∈-eq (ren-∈ (drop-sub-⊆ v₁) v₂)) v'
       | inspect (∈-eq (v₁ - v₂)) v''
-  ... | inj₁ _  | inj₁ _   | _ | _ = ⊥-elim {!!}
-  ... | inj₁ _  | inj₂ _   | _ | _ = ⊥-elim {!!}
-  ... | inj₂ _  | inj₁ _   | _ | _ = ⊥-elim {!!}
-  ... | inj₂ w' | inj₂ w'' | _ | _ =
-    cong₂ (λ x y → ne (x , y)) {!!} (sub-sub-Sp v₁ v₂ t₁ t₂ sp)
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₁ (_ , _ , () , _)            | inj₁ _ | inj₁ _ | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₁ (_ , _ , _ , () , _)) | inj₁ _ | inj₁ _ | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₂ (_ , _ , _ , _ , _ , b , refl , _)) | inj₁ _ | inj₁ x₁ | w | [ eq ] = ⊥-elim (⊎-conflict (trans (sym eq) b))
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₁ (_ , _ , () , _) | inj₁ _ | inj₂ - | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₁ (_ , _ , _ , () , _)) | inj₁ _ | inj₂ _ | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₂ (_ , _ , _ , _ , refl , _ , _ , p , _)) | inj₁ _ | inj₂ _ | [ eq ] | _ = ⊥-elim (⊎-conflict (trans (sym eq) p))
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₁ (_ , _ , () , _) | inj₂ _ | inj₁ _ | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₁ (_ , _ , refl , _ , p)) | inj₂ _ | inj₁ _ | [ eq ] | _ = ⊥-elim (⊎-conflict (trans (sym p) eq))
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₂ (_ , _ , _ , _ , _ , p , refl , _)) | inj₂ y | inj₁ x | _ | [ eq ] = ⊥-elim (⊎-conflict (trans (sym eq) p))
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₁ (_ , _ , () , _) | inj₂ _ | inj₂ _ | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₁ (_ , _ , _ , () , _)) | inj₂ _ | inj₂ _ | _ | _
+  sub-sub v₁ v₂ t₁ t₂ (ne (v , sp)) | inj₂ _ | inj₂ _ | inj₂ (inj₂ (_ , _ , _ , _ , refl , b , refl , d , e)) | inj₂ _ | inj₂ _ | [ eq₁ ] | [ eq₂ ]
+    = cong₂
+        (λ x y → ne (x , y))
+        (subst₂ (λ x y → x ≡ ren-∈ (exc v₁) y)
+          (inj₂-inj $ trans (sym d) eq₁)
+          ((inj₂-inj $ trans (sym b) eq₂))
+          e)
+        (sub-sub-Sp v₁ v₂ t₁ t₂ sp)
 
   sub-sub-Sp :
     ∀ {Γ A B C D}
