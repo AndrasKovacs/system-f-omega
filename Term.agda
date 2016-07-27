@@ -2,7 +2,7 @@
 module SystemFOmega.Term where
 
 open import SystemFOmega.Type
-  hiding (Con; _∈_; ren-∈; id; Ne; η-Ne; η; Sp; ren;
+  hiding (Con; _∈_; ren-∈; Ne; η-Ne; η; Sp; ren;
           renSp; sub; drop;  ∈-eq; subSp; subᶜ; _◇_; drop-sub-⊆; inst)
 import SystemFOmega.Type as T
 open import SystemFOmega.TypeProofs
@@ -54,7 +54,7 @@ mutual
 --------------------------------------------------------------------------------
 
 data _⊆[_]_ : ∀ {Γ Γ'} → Con Γ → Γ ⊆ Γ' → Con Γ' → Set where
-  stop  : ε ⊆[ stop ] ε
+  refl  : ∀ {Γ}{Δ : Con Γ}                         → Δ        ⊆[ refl   ] Δ
   addₖ  : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → Δ        ⊆[ add s  ] (Ξ ▷ₖ A)
   addₜ  : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → Δ        ⊆[ s      ] (Ξ ▷ₜ A)
   keepₖ : ∀ {Γ Γ'}{s : Γ ⊆ Γ'}{Δ Ξ A} → Δ ⊆[ s ] Ξ → (Δ ▷ₖ A) ⊆[ keep s ] (Ξ ▷ₖ A)
@@ -63,22 +63,17 @@ data _⊆[_]_ : ∀ {Γ Γ'} → Con Γ → Γ ⊆ Γ' → Con Γ' → Set where
 ⊆-of : ∀ {Γ Γ' Δ Ξ}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Γ ⊆ Γ'
 ⊆-of {o = o} _ = o
 
-id : ∀ {Γ}{Δ : Con Γ} → Δ ⊆[ T.id ] Δ
-id {_}{ε}      = stop
-id {_}{Δ ▷ₜ t} = subst (λ y → (Δ ▷ₜ t) ⊆[ T.id ] (Δ ▷ₜ y)) (T.ren-id t) (keepₜ id)
-id {_}{Δ ▷ₖ A} = keepₖ id
-
-topᵗ : ∀ {Γ}{Δ : Con Γ} {A} → Δ ⊆[ T.id ] (Δ ▷ₜ A)
-topᵗ = addₜ id
+topᵗ : ∀ {Γ}{Δ : Con Γ} {A} → Δ ⊆[ refl ] (Δ ▷ₜ A)
+topᵗ = addₜ refl
 
 topᵏ : ∀ {A Γ}{Δ : Con Γ} → Δ ⊆[ top ] (Δ ▷ₖ A)
-topᵏ = addₖ id
+topᵏ = addₖ refl
 
 ren-∈ : ∀ {Γ Γ' Δ Ξ A}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → A ∈ Δ → T.ren o A ∈ Ξ
-ren-∈ stop ()
-ren-∈ (addₖ o)  v       = subst (_∈ _) (top-add _ _) (vsₖ (ren-∈ o v))
-ren-∈ (addₜ o)  v       = vsₜ (ren-∈ o v)
-ren-∈ (keepₖ o) (vsₖ v) = subst (_∈ _) (top-keep _ _) (vsₖ (ren-∈ o v))
+ren-∈ refl      v       = subst (_∈ _) (sym $ T.ren-refl _) v
+ren-∈ (addₖ o)  v       = subst (_∈ _) (T.ren-∘ _ _ _) (vsₖ (ren-∈ o v))
+ren-∈ (addₜ o)  v       = vsₜ ren-∈ o v
+ren-∈ (keepₖ o) (vsₖ v) = subst (_∈ _) (top-comm _ _) (vsₖ (ren-∈ o v))
 ren-∈ (keepₜ o) vz      = vz
 ren-∈ (keepₜ o) (vsₜ v) = vsₜ ren-∈ o v
 
@@ -95,11 +90,11 @@ mutual
    T.ren (⊆-of o) t ∷ₖ
    subst (λ x → Sp _ x _) (ren-sub vz (keep (⊆-of o)) t B) (renSp o sp)
 
-ren' : ∀ {Γ Δ Ξ A} → Δ ⊆[ T.id ] Ξ → Nf {Γ} Δ A → Nf Ξ A
-ren' s t = subst (Nf _) (T.ren-id _) (ren s t)
+ren' : ∀ {Γ Δ Ξ A} → Δ ⊆[ refl ] Ξ → Nf {Γ} Δ A → Nf Ξ A
+ren' s t = subst (Nf _) (ren-refl _) (ren s t)
 
-renSp' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ T.id ] Ξ → Sp {Γ} Δ A B → Sp Ξ A B
-renSp' s t = subst₂ (Sp _) (T.ren-id _) (T.ren-id _) (renSp s t)
+renSp' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ refl ] Ξ → Sp {Γ} Δ A B → Sp Ξ A B
+renSp' s t = subst₂ (Sp _) (T.ren-refl _) (T.ren-refl _) (renSp s t)
 
 dropᶜᵏ : ∀ {Γ}{Δ : Con Γ}{A} → A ∈ Δ → T.Con
 dropᶜᵏ {Γ}vz = Γ
@@ -107,7 +102,7 @@ dropᶜᵏ (vsₜ v) = dropᶜᵏ v
 dropᶜᵏ (vsₖ v) = dropᶜᵏ v
 
 dropᶜᵏ-⊆ : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → dropᶜᵏ v ⊆ Γ
-dropᶜᵏ-⊆ vz      = T.id
+dropᶜᵏ-⊆ vz      = refl
 dropᶜᵏ-⊆ (vsₜ v) = dropᶜᵏ-⊆ v
 dropᶜᵏ-⊆ (vsₖ v) = add (dropᶜᵏ-⊆ v)
 
@@ -158,19 +153,15 @@ subᶜᵏ (vs v) t (Δ ▷ₖ A) = subᶜᵏ v t Δ ▷ₖ A
 ... | inj₂ v''  = inj₂ (vsₖ v'')
 
 drop-sub-⊆ : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → dropᶜᵗ v ⊆[ dropᶜᵏ-⊆ v ] subᶜᵗ v
-drop-sub-⊆ vz      = id
+drop-sub-⊆ vz      = refl
 drop-sub-⊆ (vsₜ v) = addₜ (drop-sub-⊆ v)
 drop-sub-⊆ (vsₖ v) = addₖ (drop-sub-⊆ v)
 
 ren-drop : ∀ {Γ Δ A}(v : A ∈ Δ) → T.ren (dropᶜᵏ-⊆ v) (dropᵗ {Γ} v) ≡ A
-ren-drop vz      = ren-id _
+ren-drop vz      = T.ren-refl _
 ren-drop (vsₜ v) = ren-drop v
-ren-drop (vsₖ v) =
-  trans
-    (trans
-      (cong (λ x → T.ren (add x) (dropᵗ v)) (sym $ T.id-∘ (dropᶜᵏ-⊆ v)))
-      (sym $ T.ren-∘ top (dropᶜᵏ-⊆ v) (dropᵗ v)))
-    (cong (T.ren top) (ren-drop v))
+ren-drop (vsₖ v) = trans (sym $ T.ren-∘ top (dropᶜᵏ-⊆ v) (dropᵗ v))
+                         (cong (T.ren top) (ren-drop v))
 
 undrop : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf (subᶜᵗ v) A
 undrop v t = subst (Nf _) (ren-drop v) (ren (drop-sub-⊆ v) t)
