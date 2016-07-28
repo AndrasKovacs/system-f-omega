@@ -6,6 +6,11 @@ open import SystemFOmega.TypeProofs
 
 
 
+
+
+
+
+
 -- Goal: T.inst (T.η vz) (T.ren (keep top) B) ≡ B
 -- ————————————————————————————————————————————————————————————
 -- sp : Sp Δ .A (∀' B)
