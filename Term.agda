@@ -90,9 +90,6 @@ mutual
    T.ren (⊆-of o) t ∷ₖ
    subst (λ x → Sp _ x _) (ren-sub vz (keep (⊆-of o)) t B) (renSp o sp)
 
-ren' : ∀ {Γ Δ Ξ A} → Δ ⊆[ refl ] Ξ → Nf {Γ} Δ A → Nf Ξ A
-ren' s t = subst (Nf _) (ren-refl _) (ren s t)
-
 renSp' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ refl ] Ξ → Sp {Γ} Δ A B → Sp Ξ A B
 renSp' s t = subst₂ (Sp _) (T.ren-refl _) (T.ren-refl _) (renSp s t)
 
