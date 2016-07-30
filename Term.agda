@@ -2,7 +2,7 @@
 module Term where
 
 open import Type
-  hiding (Con; _∈_; ren-∈; Ne; η-Ne; η; Sp; ren;
+  hiding (Con; _∈_; ren-∈; Ne; η-Ne; η; Sp; ren; _++_;
           renSp; sub; drop;  ∈-eq; subSp; subᶜ; _◇_; drop-sub-⊆; inst)
 import Type as T
 open import TypeProofs
@@ -117,15 +117,11 @@ dropᵗ (vsₖ v) = dropᵗ v
 -- Normalization
 --------------------------------------------------------------------------------
 
-snocSpₜ : ∀ {Γ Δ A B C} → Sp {Γ} Δ A (B ⇒ C) → Nf Δ B → Sp Δ A C
-snocSpₜ ε         t = t ∷ₜ ε
-snocSpₜ (x ∷ₜ sp) t = x ∷ₜ snocSpₜ sp t
-snocSpₜ (x ∷ₖ sp) t = x ∷ₖ snocSpₜ sp t
-
-snocSpₖ : ∀ {Γ Δ A B C} → Sp {Γ} Δ A (∀' C) → (t : Ty Γ B) → Sp Δ A (T.inst t C)
-snocSpₖ ε         t = t ∷ₖ ε
-snocSpₖ (x ∷ₜ sp) t = x ∷ₜ snocSpₖ sp t
-snocSpₖ (x ∷ₖ sp) t = x ∷ₖ snocSpₖ sp t
+infixr 5 _++_
+_++_ : ∀ {Γ Δ A B C} → Sp {Γ} Δ A B → Sp Δ B C → Sp Δ A C
+ε         ++ sp' = sp'
+(t ∷ₜ sp) ++ sp' = t ∷ₜ sp ++ sp'
+(k ∷ₖ sp) ++ sp' = k ∷ₖ sp ++ sp'
 
 subᶜᵗ : ∀ {Γ}{Δ : Con Γ}{A} → A ∈ Δ → Con Γ
 subᶜᵗ {_}{Δ ▷ₜ _} vz     = Δ
@@ -180,10 +176,10 @@ mutual
   η v = η-Ne (v , ε)
 
   η-Ne : ∀ {Γ Δ A} → Ne {Γ} Δ A → Nf Δ A
-  η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , snocSpₜ (renSp' topᵗ sp) (η vz))
+  η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , renSp' topᵗ sp ++ η vz ∷ₜ ε)
   η-Ne {Δ = Δ}{A = ∀'_ {A} B}  (v , sp) =
     Λ η-Ne (vsₖ v ,
-      subst (Sp _ _) (η-inst B) (snocSpₖ (renSp (topᵏ{A}) sp) (T.η vz)))
+      subst (Sp _ _) (η-inst B) (renSp (topᵏ{A}) sp ++ T.η vz ∷ₖ ε))
   η-Ne {A = ne _} n = ne n
 
 mutual

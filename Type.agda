@@ -60,11 +60,6 @@ ren-∈ (add o)  v      = vs ren-∈ o v
 ren-∈ (keep o) vz     = vz
 ren-∈ (keep o) (vs v) = vs ren-∈ o v
 
-vs-∈-≡ :
-  ∀ {Γ}{A : Set}{B C} {v v' : A ⊎ (B ∈ Γ)}
-  → v ≡ v' → smap F.id (vs_ {B = C}) v ≡ smap F.id vs_ v'
-vs-∈-≡ = cong (smap F.id vs_)
-
 mutual
   ren : ∀ {Γ Δ A} → Γ ⊆ Δ → Ty Γ A → Ty Δ A
   ren o (A ⇒ B)       = ren o A ⇒ ren o B

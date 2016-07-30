@@ -11,6 +11,14 @@ open import Function using (_$_; _∋_)
 open import Relation.Binary.PropositionalEquality
 import Function as F
 
+-- Misc util
+--------------------------------------------------------------------------------
+
+vs-∈-≡ :
+  ∀ {Γ}{A : Set}{B C} {v v' : A ⊎ (B ∈ Γ)}
+  → v ≡ v' → smap F.id (vs_ {B = C}) v ≡ smap F.id vs_ v'
+vs-∈-≡ = cong (smap F.id vs_)
+
 
 -- Categorical stuff for _⊆_
 --------------------------------------------------------------------------------
@@ -450,11 +458,11 @@ un-η (vs v) = keep (un-η v)
 ∈-neq : ∀ {Γ A B}(v : A ∈ Γ) (v' : B ∈ subᶜ v) → ∈-eq v (ren-∈ (subᶜ-⊆ v) v') ≡ inj₂ v'
 ∈-neq vz     v'      = refl
 ∈-neq (vs v) vz      = refl
-∈-neq (vs v) (vs v') = cong (smap F.id vs_) (∈-neq v v')
+∈-neq (vs v) (vs v') = vs-∈-≡ (∈-neq v v')
 
 ∈-eq-refl : ∀ {Γ A}(v : A ∈ Γ) → ∈-eq v v ≡ inj₁ refl
 ∈-eq-refl vz     = refl
-∈-eq-refl (vs v) = cong (smap F.id vs_) (∈-eq-refl v)
+∈-eq-refl (vs v) = vs-∈-≡ (∈-eq-refl v)
 
 ++-ε : ∀ {Γ A B} (sp : Sp Γ A B) → sp ++ ε ≡ sp
 ++-ε ε        = refl
