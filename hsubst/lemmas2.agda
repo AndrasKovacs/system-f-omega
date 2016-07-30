@@ -136,7 +136,7 @@ mutual
   -- wkNf and napp commute
 
   nappWkNf : ∀ {Γ σ τ ρ} → (x : Var Γ σ) → (t₁ : Nf (Γ - x) (τ ⇒ ρ)) → (t₂ : Nf (Γ - x) τ) → wkNf x (napp t₁ t₂) ≡ napp (wkNf x t₁) (wkNf x t₂)
-  nappWkNf x (λn t) u = {!wkNfSubstNfExc!} -- wkNfSubstNfExc (vs x) t vz u
+  nappWkNf x (λn t) u = wkNfSubstNfExc (vs x) t vz u
 
 
   -- ◇ and wk commute

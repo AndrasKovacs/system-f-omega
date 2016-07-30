@@ -70,8 +70,8 @@ topᵏ : ∀ {A Γ}{Δ : Con Γ} → Δ ⊆[ top ] (Δ ▷ₖ A)
 topᵏ = addₖ refl
 
 ren-∈ : ∀ {Γ Γ' Δ Ξ A}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → A ∈ Δ → T.ren o A ∈ Ξ
-ren-∈ refl      v       = subst (_∈ _) (sym $ T.ren-refl _) v
-ren-∈ (addₖ o)  v       = subst (_∈ _) (T.ren-∘ _ _ _) (vsₖ (ren-∈ o v))
+ren-∈ refl      v       = subst (_∈ _) (sym $ ren-refl _) v
+ren-∈ (addₖ o)  v       = subst (_∈ _) (ren-∘ _ _ _) (vsₖ (ren-∈ o v))
 ren-∈ (addₜ o)  v       = vsₜ ren-∈ o v
 ren-∈ (keepₖ o) (vsₖ v) = subst (_∈ _) (top-comm _ _) (vsₖ (ren-∈ o v))
 ren-∈ (keepₜ o) vz      = vz
@@ -91,7 +91,7 @@ mutual
    subst (λ x → Sp _ x _) (ren-sub vz (keep (⊆-of o)) t B) (renSp o sp)
 
 renSp' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ refl ] Ξ → Sp {Γ} Δ A B → Sp Ξ A B
-renSp' s t = subst₂ (Sp _) (T.ren-refl _) (T.ren-refl _) (renSp s t)
+renSp' s t = subst₂ (Sp _) (ren-refl _) (ren-refl _) (renSp s t)
 
 dropᶜᵏ : ∀ {Γ}{Δ : Con Γ}{A} → A ∈ Δ → T.Con
 dropᶜᵏ {Γ}vz = Γ
@@ -155,9 +155,9 @@ drop-sub-⊆ (vsₜ v) = addₜ (drop-sub-⊆ v)
 drop-sub-⊆ (vsₖ v) = addₖ (drop-sub-⊆ v)
 
 ren-drop : ∀ {Γ Δ A}(v : A ∈ Δ) → T.ren (dropᶜᵏ-⊆ v) (dropᵗ {Γ} v) ≡ A
-ren-drop vz      = T.ren-refl _
+ren-drop vz      = ren-refl _
 ren-drop (vsₜ v) = ren-drop v
-ren-drop (vsₖ v) = trans (sym $ T.ren-∘ top (dropᶜᵏ-⊆ v) (dropᵗ v))
+ren-drop (vsₖ v) = trans (sym $ ren-∘ top (dropᶜᵏ-⊆ v) (dropᵗ v))
                          (cong (T.ren top) (ren-drop v))
 
 undrop : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf (subᶜᵗ v) A
@@ -183,7 +183,7 @@ mutual
   η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , snocSpₜ (renSp' topᵗ sp) (η vz))
   η-Ne {Δ = Δ}{A = ∀'_ {A} B}  (v , sp) =
     Λ η-Ne (vsₖ v ,
-      subst (Sp _ _) {!!} (snocSpₖ (renSp (topᵏ{A}) sp) (T.η vz))) -- η-eq plz
+      subst (Sp _ _) (η-inst B) (snocSpₖ (renSp (topᵏ{A}) sp) (T.η vz)))
   η-Ne {A = ne _} n = ne n
 
 mutual
@@ -205,7 +205,7 @@ mutual
     subst (λ x → Sp _ x _) (sub-inst v k t' B) (subSpₖ v t' sp)
 
 mutual
-  {-# TERMINATING #-} -- and why?? The call graph is the same as in STLC sub
+  {-# TERMINATING #-} -- and why?? The call graph is the same as in Type sub
   subₜ :
     ∀ {Γ Δ A B} (v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf {Γ} Δ B → Nf (subᶜᵗ v) B
   subₜ v t' (ƛ t)  = ƛ subₜ (vsₜ v) t' t

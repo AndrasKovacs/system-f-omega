@@ -43,6 +43,14 @@ data _⊆_ : Con → Con → Set where
   add  : ∀ {A Γ Δ} → Γ ⊆ Δ → Γ ⊆ (Δ ▷ A)
   keep : ∀ {A Γ Δ} → Γ ⊆ Δ → (Γ ▷ A) ⊆ (Δ ▷ A)
 
+infixr 9 _∘_
+_∘_ : ∀ {Γ Δ Ξ} → Δ ⊆ Ξ → Γ ⊆ Δ → Γ ⊆ Ξ
+refl   ∘ o'      = o'
+add o  ∘ o'      = add (o ∘ o')
+keep o ∘ refl    = keep o
+keep o ∘ add o'  = add (o ∘ o')
+keep o ∘ keep o' = keep (o ∘ o')
+
 top : ∀ {A Γ} → Γ ⊆ (Γ ▷ A)
 top = add refl
 
@@ -126,9 +134,10 @@ mutual
 inst : ∀ {Γ A B} → Ty Γ A → Ty (Γ ▷ A) B → Ty Γ B
 inst = sub vz
 
-snocSp : ∀ {Γ A B C} → Sp Γ A (B ⇒ C) → Ty Γ B → Sp Γ A C
-snocSp ε       t = t ∷ ε
-snocSp (x ∷ s) t = x ∷ snocSp s t
+infixr 5 _++_
+_++_ : ∀ {Γ A B C} → Sp Γ A B → Sp Γ B C → Sp Γ A C
+_++_ ε        ys = ys
+_++_ (x ∷ xs) ys = x ∷ xs ++ ys
 
 mutual
   η : ∀ {Γ A} → A ∈ Γ → Ty Γ A
@@ -136,73 +145,5 @@ mutual
 
   η-Ne : ∀ {A Γ} → Ne Γ A → Ty Γ A
   η-Ne {⋆}     n        = ne n
-  η-Ne {A ⇒ B} (v , sp) = ƛ η-Ne ((vs v) , snocSp (renSp top sp) (η vz))
-
--- Categorical stuff for _⊆_
---------------------------------------------------------------------------------
-
-infixr 9 _∘_
-_∘_ : ∀ {Γ Δ Ξ} → Δ ⊆ Ξ → Γ ⊆ Δ → Γ ⊆ Ξ
-refl   ∘ o'      = o'
-add o  ∘ o'      = add (o ∘ o')
-keep o ∘ refl    = keep o
-keep o ∘ add o'  = add (o ∘ o')
-keep o ∘ keep o' = keep (o ∘ o')
-
-∘-refl : ∀ {Γ Δ} (o : Γ ⊆ Δ) → o ∘ refl ≡ o
-∘-refl refl     = refl
-∘-refl (add o)  = cong add (∘-refl o)
-∘-refl (keep o) = refl
-
-ren-∈-∘ :
-  ∀ {Γ Δ Ξ A} (o : Δ ⊆ Ξ) (o' : Γ ⊆ Δ) (v : A ∈ Γ)
-  → ren-∈ o (ren-∈ o' v) ≡ ren-∈ (o ∘ o') v
-ren-∈-∘ refl     o'        v      = refl
-ren-∈-∘ (add o)  o'        v      = cong vs_ (ren-∈-∘ o o' v)
-ren-∈-∘ (keep o) refl      v      = refl
-ren-∈-∘ (keep o) (add o')  v      = cong vs_ (ren-∈-∘ o o' v)
-ren-∈-∘ (keep o) (keep o') vz     = refl
-ren-∈-∘ (keep o) (keep o') (vs v) = ren-∈-∘ (add o) o' v
-
-mutual
-  ren-∘ : ∀ {Γ Δ Ξ A}(o : Δ ⊆ Ξ)(o' : Γ ⊆ Δ)(t : Ty Γ A) → ren o (ren o' t) ≡ ren (o ∘ o') t
-  ren-∘ o o' (A ⇒ B)       = cong₂ _⇒_ (ren-∘ o o' A) (ren-∘ o o' B)
-  ren-∘ o o' (∀' A)        = cong ∀'_  (ren-∘ (keep o) (keep o') A)
-  ren-∘ o o' (ƛ  t)        = cong ƛ_   (ren-∘ (keep o) (keep o') t)
-  ren-∘ o o' (ne (v , sp)) = cong₂ (λ x y → ne (x , y)) (ren-∈-∘ o o' v) (renSp-∘ o o' sp)
-
-  renSp-∘ :
-    ∀ {Γ Δ Ξ A B}(o : Δ ⊆ Ξ)(o' : Γ ⊆ Δ)(sp : Sp Γ A B)
-    → renSp o (renSp o' sp) ≡ renSp (o ∘ o') sp
-  renSp-∘ o o' ε        = refl
-  renSp-∘ o o' (t ∷ sp) = cong₂ _∷_ (ren-∘ o o' t) (renSp-∘ o o' sp)
-
-Id-⊆ : ∀ {Γ} → Γ ⊆ Γ → Set
-Id-⊆ refl     = ⊤
-Id-⊆ (add o)  = ⊥
-Id-⊆ (keep o) = Id-⊆ o
-
-ren-∈-Id : ∀ {Γ A}(o : Γ ⊆ Γ){{p : Id-⊆ o}}(v : A ∈ Γ) → ren-∈ o v ≡ v
-ren-∈-Id refl     v      = refl
-ren-∈-Id (add o) {{()}} v
-ren-∈-Id (keep o) vz     = refl
-ren-∈-Id (keep o) (vs v) = cong vs_ (ren-∈-Id o v)
-
-mutual
-  ren-Id : ∀ {Γ A}(o : Γ ⊆ Γ){{p : Id-⊆ o}}(t : Ty Γ A) → ren o t ≡ t
-  ren-Id o (A ⇒ B)       = cong₂ _⇒_ (ren-Id o A) (ren-Id o B)
-  ren-Id o (ƛ t)         = cong ƛ_ (ren-Id (keep o) t)
-  ren-Id o (∀' t)        = cong ∀'_ (ren-Id (keep o) t)
-  ren-Id o (ne (v , sp)) = cong₂ (λ x y → ne (x , y)) (ren-∈-Id o v) (renSp-Id o sp)
-
-  renSp-Id : ∀ {Γ A B}(o : Γ ⊆ Γ){{p : Id-⊆ o}}(sp : Sp Γ A B) → renSp o sp ≡ sp
-  renSp-Id o ε        = refl
-  renSp-Id o (t ∷ sp) = cong₂ _∷_ (ren-Id o t) (renSp-Id o sp)
-
-ren-refl : ∀ {Γ A}(t : Ty Γ A) → ren refl t ≡ t
-ren-refl = ren-Id refl
-
-renSp-refl : ∀ {Γ A B}(sp : Sp Γ A B) → renSp refl sp ≡ sp
-renSp-refl = renSp-Id refl
-
+  η-Ne {A ⇒ B} (v , sp) = ƛ η-Ne ((vs v) , (renSp top sp ++ η vz ∷ ε))
 
