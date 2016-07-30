@@ -1,7 +1,7 @@
 
-module SystemFOmega.TypeProofs where
+module TypeProofs where
 
-open import SystemFOmega.Type
+open import Type
 
 open import Data.Empty
 open import Data.Product renaming (map to pmap)

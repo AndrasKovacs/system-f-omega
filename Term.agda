@@ -1,11 +1,11 @@
 
-module SystemFOmega.Term where
+module Term where
 
-open import SystemFOmega.Type
+open import Type
   hiding (Con; _∈_; ren-∈; Ne; η-Ne; η; Sp; ren;
           renSp; sub; drop;  ∈-eq; subSp; subᶜ; _◇_; drop-sub-⊆; inst)
-import SystemFOmega.Type as T
-open import SystemFOmega.TypeProofs
+import Type as T
+open import TypeProofs
 
 open import Relation.Binary.PropositionalEquality
 open import Data.Product

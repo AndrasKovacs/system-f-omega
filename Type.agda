@@ -1,5 +1,5 @@
 
-module SystemFOmega.Type where
+module Type where
 
 open import Data.Sum renaming (map to smap)
 open import Function using (_$_; _∋_)
