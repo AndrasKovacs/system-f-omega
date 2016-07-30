@@ -33,7 +33,8 @@ data Tm {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
   _∙_  : ∀ {A B} → Tm Δ (A ⇒ B) → Tm Δ A → Tm Δ B
   Λ_   : ∀ {A B} → Tm (Δ ▷ₖ A) B → Tm Δ (∀' B)
   _∙ₜ_ : ∀ {A B} → Tm Δ (∀' B) → (t : Ty Γ A) → Tm Δ (T.inst t B)
-infixl 6 _∙ₜ_
+infixl 8 _∙ₜ_
+infixl 7 _∙_
 
 mutual
   data Nf {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
