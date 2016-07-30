@@ -31,15 +31,15 @@ data Tm {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
   var  : ∀ {A} → A ∈ Δ → Tm Δ A
   ƛ_   : ∀ {A B} → Tm (Δ ▷ₜ A) B → Tm Δ (A ⇒ B)
   _∙_  : ∀ {A B} → Tm Δ (A ⇒ B) → Tm Δ A → Tm Δ B
-  Λ_   : ∀ {A B} → Tm (Δ ▷ₖ A) B → Tm Δ (∀' B)
-  _∙ₜ_ : ∀ {A B} → Tm Δ (∀' B) → (t : Ty Γ A) → Tm Δ (T.inst t B)
+  Λ_   : ∀ {A B} → Tm (Δ ▷ₖ A) B → Tm Δ (∀' A B)
+  _∙ₜ_ : ∀ {A B} → Tm Δ (∀' A B) → (t : Ty Γ A) → Tm Δ (T.inst t B)
 infixl 8 _∙ₜ_
 infixl 7 _∙_
 
 mutual
   data Nf {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
     ƛ_   : ∀ {A B} → Nf (Δ ▷ₜ A) B → Nf Δ (A ⇒ B)
-    Λ_   : ∀ {A B} → Nf (Δ ▷ₖ A) B → Nf Δ (∀' B)
+    Λ_   : ∀ {A B} → Nf (Δ ▷ₖ A) B → Nf Δ (∀' A B)
     ne   : ∀ {n} → Ne Δ (ne n) → Nf Δ (ne n)
 
   data Ne {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Set where
@@ -48,7 +48,7 @@ mutual
   data Sp {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Ty Γ ⋆ → Set where
     ε    : ∀ {A} → Sp Δ A A
     _∷ₜ_ : ∀ {A B C} → Nf Δ A → Sp Δ B C → Sp Δ (A ⇒ B) C
-    _∷ₖ_ : ∀ {A B C} → (t : Ty Γ A) → Sp Δ (T.inst t B) C → Sp Δ (∀' B) C
+    _∷ₖ_ : ∀ {A B C} → (t : Ty Γ A) → Sp Δ (T.inst t B) C → Sp Δ (∀' A B) C
   infixr 5 _∷ₜ_ _∷ₖ_
 
 -- Renaming
@@ -178,7 +178,7 @@ mutual
 
   η-Ne : ∀ {Γ Δ A} → Ne {Γ} Δ A → Nf Δ A
   η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , renSp' topᵗ sp ++ η vz ∷ₜ ε)
-  η-Ne {A = ∀' B}  (v , sp) = Λ η-Ne (vsₖ v , subst (Sp _ _) (η-inst B) (renSp topᵏ sp ++ T.η vz ∷ₖ ε))
+  η-Ne {A = ∀' A B}(v , sp) = Λ η-Ne (vsₖ v , subst (Sp _ _) (η-inst B) (renSp topᵏ sp ++ T.η vz ∷ₖ ε))
   η-Ne {A = ne _}  n        = ne n
 
 mutual

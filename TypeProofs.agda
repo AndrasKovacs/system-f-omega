@@ -41,7 +41,7 @@ ren-∈-∘ (keep o) (keep o') (vs v) = ren-∈-∘ (add o) o' v
 mutual
   ren-∘ : ∀ {Γ Δ Ξ A}(o : Δ ⊆ Ξ)(o' : Γ ⊆ Δ)(t : Ty Γ A) → ren o (ren o' t) ≡ ren (o ∘ o') t
   ren-∘ o o' (A ⇒ B)       = cong₂ _⇒_ (ren-∘ o o' A) (ren-∘ o o' B)
-  ren-∘ o o' (∀' A)        = cong ∀'_  (ren-∘ (keep o) (keep o') A)
+  ren-∘ o o' (∀' A B)      = cong (∀' A) (ren-∘ (keep o) (keep o') B)
   ren-∘ o o' (ƛ  t)        = cong ƛ_   (ren-∘ (keep o) (keep o') t)
   ren-∘ o o' (ne (v , sp)) = cong₂ (λ x y → ne (x , y)) (ren-∈-∘ o o' v) (renSp-∘ o o' sp)
 
@@ -66,7 +66,7 @@ mutual
   ren-Id : ∀ {Γ A}(o : Γ ⊆ Γ){{p : Id-⊆ o}}(t : Ty Γ A) → ren o t ≡ t
   ren-Id o (A ⇒ B)       = cong₂ _⇒_ (ren-Id o A) (ren-Id o B)
   ren-Id o (ƛ t)         = cong ƛ_ (ren-Id (keep o) t)
-  ren-Id o (∀' t)        = cong ∀'_ (ren-Id (keep o) t)
+  ren-Id o (∀' k t)      = cong (∀' k) (ren-Id (keep o) t)
   ren-Id o (ne (v , sp)) = cong₂ (λ x y → ne (x , y)) (ren-∈-Id o v) (renSp-Id o sp)
 
   renSp-Id : ∀ {Γ A B}(o : Γ ⊆ Γ){{p : Id-⊆ o}}(sp : Sp Γ A B) → renSp o sp ≡ sp
@@ -113,8 +113,8 @@ mutual
     ∀ {Γ Δ A B} (o : Γ ⊆ Δ) (v : A ∈ Δ)(f : Fresh o v)(t' : Ty (drop v) A)(t : Ty Γ B)
     → sub v t' (ren o t) ≡ ren (Fresh-sub-⊆ o f) t
   fresh-sub o v f t' (A ⇒ B) rewrite fresh-sub o v f t' A | fresh-sub o v f t' B = refl
-  fresh-sub o v f t' (ƛ t)  = cong ƛ_ (fresh-sub (keep o) (vs v) f t' t)
-  fresh-sub o v f t' (∀' t) = cong ∀'_ (fresh-sub (keep o) (vs v) f t' t)
+  fresh-sub o v f t' (ƛ t)    = cong ƛ_ (fresh-sub (keep o) (vs v) f t' t)
+  fresh-sub o v f t' (∀' k t) = cong (∀' k) (fresh-sub (keep o) (vs v) f t' t)
   fresh-sub o v f t' (ne (v' , sp)) with ∈-eq v (ren-∈ o v') | fresh-∈-eq o v v' f
   ... | inj₁ refl | ()
   ... | inj₂ _    | refl = cong (λ x → ne (_ , x)) (fresh-sub-Sp o v f t' sp)
@@ -183,8 +183,8 @@ mutual
     ∀ {Γ Δ A B} (v : A ∈ Γ) (o : Γ ⊆ Δ) t' (t : Ty Γ B)
     → ren (⊆-subᶜ v o) (sub v t' t) ≡ sub (ren-∈ o v) (ren (⊆-drop v o) t') (ren o t)
   ren-sub v o t' (A ⇒ B) rewrite ren-sub v o t' A | ren-sub v o t' B = refl
-  ren-sub v o t' (ƛ t)  = cong ƛ_  (ren-sub (vs v) (keep o) t' t)
-  ren-sub v o t' (∀' t) = cong ∀'_ (ren-sub (vs v) (keep o) t' t)
+  ren-sub v o t' (ƛ t)    = cong ƛ_  (ren-sub (vs v) (keep o) t' t)
+  ren-sub v o t' (∀' k t) = cong (∀' k) (ren-sub (vs v) (keep o) t' t)
   ren-sub v o t' (ne (v' , sp))
     with ∈-eq (ren-∈ o v) (ren-∈ o v') | ∈-eq v v' | ren-sub-∈ o v v'
   ... | inj₁ refl | inj₁ _    | refl
@@ -311,8 +311,8 @@ mutual
       (sub (ren-∈ (drop-⊆ v₁) v₂) (ren (drop-drop v₁) t₂) t))
 
   sub-sub v₁ v₂ t₁ t₂ (A ⇒ B) = cong₂ _⇒_ (sub-sub v₁ v₂ t₁ t₂ A) (sub-sub v₁ v₂ t₁ t₂ B)
-  sub-sub v₁ v₂ t₁ t₂ (ƛ  t)  = cong ƛ_  (sub-sub (vs v₁) v₂ t₁ t₂ t )
-  sub-sub v₁ v₂ t₁ t₂ (∀' t)  = cong ∀'_ (sub-sub (vs v₁) v₂ t₁ t₂ t)
+  sub-sub v₁ v₂ t₁ t₂ (ƛ  t)   = cong ƛ_  (sub-sub (vs v₁) v₂ t₁ t₂ t )
+  sub-sub v₁ v₂ t₁ t₂ (∀' k t) = cong (∀' k) (sub-sub (vs v₁) v₂ t₁ t₂ t)
 
   sub-sub v₁ v₂ t₁ t₂ (ne (v , sp))
     with sub-sub-∈ v v₁ v₂
@@ -553,7 +553,7 @@ mutual
     → sub (ren-∈ (⊆-η v) v) (η (η-∈ v)) (ren (⊆-η v) t) ≡ ren (un-η v) t
   η-≡ v (A ⇒ B)        = cong₂ _⇒_ (η-≡ v A) (η-≡ v B)
   η-≡ v (ƛ t)          = cong ƛ_  (η-≡ (vs v) t)
-  η-≡ v (∀' t)         = cong ∀'_ (η-≡ (vs v) t)
+  η-≡ v (∀' k t)       = cong (∀' k) (η-≡ (vs v) t)
   η-≡ v (ne (v' , sp))
     with
       ∈-eq (ren-∈ (⊆-η v) v) (ren-∈ (⊆-η v) v')

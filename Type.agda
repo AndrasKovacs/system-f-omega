@@ -27,7 +27,7 @@ mutual
   data Ty Γ : Kind → Set where
     _⇒_ : Ty Γ ⋆ → Ty Γ ⋆ → Ty Γ ⋆
     ƛ_  : ∀ {A B} → Ty (Γ ▷ A) B → Ty Γ (A ⇒ B)
-    ∀'_ : ∀ {A}   → Ty (Γ ▷ A) ⋆ → Ty Γ ⋆
+    ∀'  : ∀ A → Ty (Γ ▷ A) ⋆ → Ty Γ ⋆
     ne  : Ne Γ ⋆ → Ty Γ ⋆
 
   data Ne Γ : Kind → Set where
@@ -63,7 +63,7 @@ ren-∈ (keep o) (vs v) = vs ren-∈ o v
 mutual
   ren : ∀ {Γ Δ A} → Γ ⊆ Δ → Ty Γ A → Ty Δ A
   ren o (A ⇒ B)       = ren o A ⇒ ren o B
-  ren o (∀' t)        = ∀' ren (keep o) t
+  ren o (∀' _ t)      = ∀' _ (ren (keep o) t)
   ren o (ƛ t)         = ƛ (ren (keep o) t)
   ren o (ne (v , sp)) = ne ((ren-∈ o v) , renSp o sp)
 
@@ -111,9 +111,9 @@ drop-sub-⊆ (vs v) = add (drop-sub-⊆ v)
 
 mutual
   sub : ∀ {Γ A B} → (v : A ∈ Γ) → Ty (drop v) A → Ty Γ B → Ty (subᶜ v) B
-  sub v t' (A ⇒ B) = sub v t' A ⇒ sub v t' B
-  sub v t' (∀' t)  = ∀' sub (vs v) t' t
-  sub v t' (ƛ t)   = ƛ  sub (vs v) t' t
+  sub v t' (A ⇒ B)  = sub v t' A ⇒ sub v t' B
+  sub v t' (∀' _ t) = ∀' _ (sub (vs v) t' t)
+  sub v t' (ƛ t)    = ƛ  sub (vs v) t' t
   sub v t' (ne (v' , sp)) with ∈-eq v v' | subSp v t' sp
   ... | inj₁ refl | sp' = ren (drop-sub-⊆ v) t' ◇ sp'
   ... | inj₂ v''  | sp' = ne (v'' , sp')

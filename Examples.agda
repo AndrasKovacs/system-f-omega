@@ -2,13 +2,12 @@
 module Examples where
 
 open import Term hiding (η; _◇_)
-open import Type hiding (∀'_; add)
+open import Type hiding (add)
 import Type as Ty
 
 open import Relation.Binary.PropositionalEquality
 
 ⊢_ = Tm ε
-∀' = λ {Γ} A → Ty.∀'_ {Γ}{A}
 
 id : ⊢ ∀' ⋆ (η vz ⇒ η vz)
 id = Λ ƛ var vz
