@@ -177,10 +177,8 @@ mutual
 
   η-Ne : ∀ {Γ Δ A} → Ne {Γ} Δ A → Nf Δ A
   η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , renSp' topᵗ sp ++ η vz ∷ₜ ε)
-  η-Ne {Δ = Δ}{A = ∀'_ {A} B}  (v , sp) =
-    Λ η-Ne (vsₖ v ,
-      subst (Sp _ _) (η-inst B) (renSp (topᵏ{A}) sp ++ T.η vz ∷ₖ ε))
-  η-Ne {A = ne _} n = ne n
+  η-Ne {A = ∀' B}  (v , sp) = Λ η-Ne (vsₖ v , subst (Sp _ _) (η-inst B) (renSp topᵏ sp ++ T.η vz ∷ₖ ε))
+  η-Ne {A = ne _}  n        = ne n
 
 mutual
   subₖ :
