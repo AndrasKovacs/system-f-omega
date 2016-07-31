@@ -157,9 +157,6 @@ ren-drop (vsₜ v) = ren-drop v
 ren-drop (vsₖ v) = trans (sym $ ren-∘ top (dropᶜᵏ-⊆ v) (dropᵗ v))
                          (cong (T.ren top) (ren-drop v))
 
-undrop : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf (subᶜᵗ v) A
-undrop v t = subst (Nf _) (ren-drop v) (ren (drop-sub-⊆ v) t)
-
 ∈-sub :
   ∀ {Γ}{Δ : Con Γ}{κ A} (vk : κ T.∈ Γ)(t' : Ty (T.drop vk) κ)
   → A ∈ Δ → T.sub vk t' A ∈ subᶜᵏ vk t' Δ
@@ -200,12 +197,15 @@ mutual
   subSpₜ v t' (_∷ₜ_ {B = B} t sp) = T.sub v t' t ∷ₜ
     subst (λ x → Sp _ x _) (sub-inst v t t' B) (subSpₜ v t' sp)
 
+undrop : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf (subᶜᵗ v) A
+undrop v t = subst (Nf _) (ren-drop v) (ren (drop-sub-⊆ v) t)
+
 mutual
-  {-# TERMINATING #-} -- and why?? The call graph is the same as in Type sub
+  {-# TERMINATING #-} -- TODO
   sub :
     ∀ {Γ Δ A B} (v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf {Γ} Δ B → Nf (subᶜᵗ v) B
   sub v t' (ƛ t) = ƛ sub (vsₜ v) t' t
-  sub v t' (Λ t) = Λ sub (vsₖ v) t' t
+  sub v t' (Λ t) = Λ sub {A = T.ren top _} (vsₖ v) t' t   -- renames A
   sub v t' (ne (v' , sp)) with ∈-eq v v' | subSp v t' sp
   ... | inj₁ refl | sp' = undrop v t' ◇ sp'
   ... | inj₂ v''  | sp' = ne (v'' , sp')
@@ -218,8 +218,8 @@ mutual
 
   _◇_ : ∀ {Γ Δ A B} → Nf {Γ} Δ A → Sp Δ A B → Nf Δ B
   t     ◇ ε          = t
-  (ƛ t) ◇ (t' ∷  sp) = sub  vz t'  t ◇ sp
-  (Λ t) ◇ (ty ∷ₜ sp) = subₜ vz ty  t ◇ sp
+  _◇_ {A = A ⇒ B}  (ƛ t)(t' ∷  sp) = _◇_ {A = B} (sub  vz t' t) sp
+  _◇_ {A = ∀' A B} (Λ t)(ty ∷ₜ sp) = _◇_ {A = T.sub vz ty B} (subₜ vz ty t) sp -- subs A
 
 nf : ∀ {Γ Δ A} → Tm {Γ} Δ A → Nf Δ A
 nf (var v)  = η v
