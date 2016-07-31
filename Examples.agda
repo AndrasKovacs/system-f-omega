@@ -22,7 +22,7 @@ list : ∀ {Γ} → Ty Γ (⋆ ⇒ ⋆)
 list = ƛ ∀' ⋆ ((η (vs vz) ⇒ η vz ⇒ η vz) ⇒ η vz ⇒ η vz)
 
 zero : ⊢ nat
-zero = Λ ƛ var vz
+zero = Λ ƛ ƛ var vz
 
 suc : ⊢ (nat ⇒ nat)
 suc = ƛ Λ ƛ ƛ (var (vsₜ vz) ∙ (var (vsₜ vsₜ vsₖ vz) ∙ₜ η vz ∙ var (vsₜ vz) ∙ var vz))
@@ -40,8 +40,7 @@ add = ƛ ƛ Λ ƛ ƛ (
   )
 
 two' : Nf ε nat
-two' =
-  Λ ƛ ƛ ne ((vsₜ vz) , (ne ((vsₜ vz) , (ne ((vsₜ vz) , (ne (vz , ε) ∷ₜ ε)) ∷ₜ ε)) ∷ₜ ε))
+two' = Λ (ƛ (ƛ ne ((vsₜ vz) , (ne ((vsₜ vz) , (ne (vz , ε) ∷ ε)) ∷ ε))))
 
 test : nf two ≡ two'
 test = refl
