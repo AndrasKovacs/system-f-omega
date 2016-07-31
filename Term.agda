@@ -201,7 +201,7 @@ undrop : ∀ {Γ}{Δ : Con Γ}{A}(v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v
 undrop v t = subst (Nf _) (ren-drop v) (ren (drop-sub-⊆ v) t)
 
 mutual
-  {-# TERMINATING #-} -- TODO
+  {-# TERMINATING #-}
   sub :
     ∀ {Γ Δ A B} (v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf {Γ} Δ B → Nf (subᶜᵗ v) B
   sub v t' (ƛ t) = ƛ sub (vsₜ v) t' t
