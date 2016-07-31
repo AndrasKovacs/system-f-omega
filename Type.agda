@@ -109,13 +109,16 @@ drop-sub-⊆ (vs v) = add (drop-sub-⊆ v)
 ∈-eq (vs v) vz      = inj₂ vz
 ∈-eq (vs v) (vs v') = smap (λ z → z) vs_ (∈-eq v v')
 
+undrop : ∀ {Γ A}(v : A ∈ Γ) → Ty (drop v) A → Ty (subᶜ v) A
+undrop v = ren (drop-sub-⊆ v)
+
 mutual
   sub : ∀ {Γ A B} → (v : A ∈ Γ) → Ty (drop v) A → Ty Γ B → Ty (subᶜ v) B
   sub v t' (A ⇒ B)  = sub v t' A ⇒ sub v t' B
   sub v t' (∀' _ t) = ∀' _ (sub (vs v) t' t)
-  sub v t' (ƛ t)    = ƛ  sub (vs v) t' t
+  sub v t' (ƛ t)    = ƛ sub (vs v) t' t
   sub v t' (ne (v' , sp)) with ∈-eq v v' | subSp v t' sp
-  ... | inj₁ refl | sp' = ren (drop-sub-⊆ v) t' ◇ sp'
+  ... | inj₁ refl | sp' = undrop v t' ◇ sp'
   ... | inj₂ v''  | sp' = ne (v'' , sp')
 
   subSp : ∀ {Γ A B C} → (v : A ∈ Γ) → Ty (drop v) A → Sp Γ B C → Sp (subᶜ v) B C
@@ -123,8 +126,8 @@ mutual
   subSp v t' (t ∷ sp) = sub v t' t ∷ subSp v t' sp
 
   _◇_ : ∀ {Γ A B} → Ty Γ A → Sp Γ A B → Ty Γ B
-  t     ◇ ε        = t
-  (ƛ t) ◇ (x ∷ sp) = sub vz x t ◇ sp
+  t     ◇ ε         = t
+  (ƛ t) ◇ (t' ∷ sp) = sub vz t' t ◇ sp
 
 inst : ∀ {Γ A B} → Ty Γ A → Ty (Γ ▷ A) B → Ty Γ B
 inst = sub vz

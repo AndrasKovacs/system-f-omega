@@ -2,7 +2,7 @@
 module Term where
 
 open import Type
-  hiding (Con; _∈_; ren-∈; Ne; η-Ne; η; Sp; ren; _++_;
+  hiding (Con; _∈_; ren-∈; Ne; η-Ne; η; Sp; ren; _++_; undrop;
           renSp; sub; drop;  ∈-eq; subSp; subᶜ; _◇_; drop-sub-⊆; inst)
 import Type as T
 open import TypeProofs
@@ -47,9 +47,9 @@ mutual
 
   data Sp {Γ} (Δ : Con Γ) : Ty Γ ⋆ → Ty Γ ⋆ → Set where
     ε    : ∀ {A} → Sp Δ A A
-    _∷ₜ_ : ∀ {A B C} → Nf Δ A → Sp Δ B C → Sp Δ (A ⇒ B) C
-    _∷ₖ_ : ∀ {A B C} → (t : Ty Γ A) → Sp Δ (T.inst t B) C → Sp Δ (∀' A B) C
-  infixr 5 _∷ₜ_ _∷ₖ_
+    _∷_  : ∀ {A B C} → Nf Δ A → Sp Δ B C → Sp Δ (A ⇒ B) C
+    _∷ₜ_ : ∀ {A B C} → (t : Ty Γ A) → Sp Δ (T.inst t B) C → Sp Δ (∀' A B) C
+  infixr 5 _∷_ _∷ₜ_
 
 -- Renaming
 --------------------------------------------------------------------------------
@@ -64,11 +64,11 @@ data _⊆[_]_ : ∀ {Γ Γ'} → Con Γ → Γ ⊆ Γ' → Con Γ' → Set where
 ⊆-of : ∀ {Γ Γ' Δ Ξ}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Γ ⊆ Γ'
 ⊆-of {o = o} _ = o
 
-topᵗ : ∀ {Γ}{Δ : Con Γ} {A} → Δ ⊆[ refl ] (Δ ▷ₜ A)
-topᵗ = addₜ refl
+topₜ : ∀ {Γ}{Δ : Con Γ} {A} → Δ ⊆[ refl ] (Δ ▷ₜ A)
+topₜ = addₜ refl
 
-topᵏ : ∀ {A Γ}{Δ : Con Γ} → Δ ⊆[ top ] (Δ ▷ₖ A)
-topᵏ = addₖ refl
+topₖ : ∀ {A Γ}{Δ : Con Γ} → Δ ⊆[ top ] (Δ ▷ₖ A)
+topₖ = addₖ refl
 
 ren-∈ : ∀ {Γ Γ' Δ Ξ A}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → A ∈ Δ → T.ren o A ∈ Ξ
 ren-∈ refl      v       = subst (_∈ _) (sym $ ren-refl _) v
@@ -86,16 +86,16 @@ mutual
 
   renSp : ∀ {Γ Γ' Δ Ξ A B}{o : Γ ⊆ Γ'} → Δ ⊆[ o ] Ξ → Sp Δ A B → Sp Ξ (T.ren o A) (T.ren o B)
   renSp o ε         = ε
-  renSp o (x ∷ₜ sp) = ren o x ∷ₜ renSp o sp
-  renSp o (_∷ₖ_ {B = B} t sp) =
-   T.ren (⊆-of o) t ∷ₖ
+  renSp o (x ∷ sp) = ren o x ∷ renSp o sp
+  renSp o (_∷ₜ_ {B = B} t sp) =
+   T.ren (⊆-of o) t ∷ₜ
    subst (λ x → Sp _ x _) (ren-sub vz (keep (⊆-of o)) t B) (renSp o sp)
 
 renSp' : ∀ {Γ Δ Ξ A B} → Δ ⊆[ refl ] Ξ → Sp {Γ} Δ A B → Sp Ξ A B
 renSp' s t = subst₂ (Sp _) (ren-refl _) (ren-refl _) (renSp s t)
 
 dropᶜᵏ : ∀ {Γ}{Δ : Con Γ}{A} → A ∈ Δ → T.Con
-dropᶜᵏ {Γ}vz = Γ
+dropᶜᵏ {Γ} vz  = Γ
 dropᶜᵏ (vsₜ v) = dropᶜᵏ v
 dropᶜᵏ (vsₖ v) = dropᶜᵏ v
 
@@ -121,8 +121,8 @@ dropᵗ (vsₖ v) = dropᵗ v
 infixr 5 _++_
 _++_ : ∀ {Γ Δ A B C} → Sp {Γ} Δ A B → Sp Δ B C → Sp Δ A C
 ε         ++ sp' = sp'
-(t ∷ₜ sp) ++ sp' = t ∷ₜ sp ++ sp'
-(k ∷ₖ sp) ++ sp' = k ∷ₖ sp ++ sp'
+(t ∷  sp) ++ sp' = t ∷  sp ++ sp'
+(k ∷ₜ sp) ++ sp' = k ∷ₜ sp ++ sp'
 
 subᶜᵗ : ∀ {Γ}{Δ : Con Γ}{A} → A ∈ Δ → Con Γ
 subᶜᵗ {_}{Δ ▷ₜ _} vz     = Δ
@@ -177,55 +177,56 @@ mutual
   η v = η-Ne (v , ε)
 
   η-Ne : ∀ {Γ Δ A} → Ne {Γ} Δ A → Nf Δ A
-  η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , renSp' topᵗ sp ++ η vz ∷ₜ ε)
-  η-Ne {A = ∀' A B}(v , sp) = Λ η-Ne (vsₖ v , subst (Sp _ _) (η-inst B) (renSp topᵏ sp ++ T.η vz ∷ₖ ε))
-  η-Ne {A = ne _}  n        = ne n
+  η-Ne {A = A ⇒ B} (v , sp) = ƛ η-Ne (vsₜ v , renSp' topₜ sp ++ η vz ∷ ε)
+  η-Ne {A = ∀' A B}(v , sp) =
+    Λ η-Ne (vsₖ v , subst (Sp _ _) (η-inst B) (renSp topₖ sp ++ T.η vz ∷ₜ ε))
+  η-Ne {A = ne _} n = ne n
 
 mutual
-  subₖ :
+  subₜ :
     ∀ {Γ Δ A B}(v : A T.∈ Γ) (t' : Ty (T.drop v) A)
     → Nf {Γ} Δ B → Nf (subᶜᵏ v t' Δ) (T.sub v t' B)
-  subₖ v t' (ƛ t) = ƛ subₖ v t' t
-  subₖ v t' (Λ t) = Λ subₖ (vs v) t' t
-  subₖ v t' (ne {v'ₜ , _} (v' , sp)) with T.∈-eq v v'ₜ | subSpₖ v t' sp
+  subₜ v t' (ƛ t) = ƛ subₜ v t' t
+  subₜ v t' (Λ t) = Λ subₜ (vs v) t' t
+  subₜ v t' (ne {v'ₜ , _} (v' , sp)) with T.∈-eq v v'ₜ | subSpₜ v t' sp
   ... | inj₁ refl | sp' = η-Ne (∈-sub v t' v' , sp')
-  ... | inj₂ v''  | sp' = ne (∈-sub v t' v' , sp')
+  ... | inj₂ _    | sp' = ne (∈-sub v t' v' , sp')
 
-  subSpₖ :
+  subSpₜ :
     ∀ {Γ Δ A B C}(v : A T.∈ Γ) (t' : Ty (T.drop v) A)
     → Sp {Γ} Δ B C → Sp (subᶜᵏ v t' Δ) (T.sub v t' B) (T.sub v t' C)
-  subSpₖ v t' ε         = ε
-  subSpₖ v t' (t ∷ₜ sp) = subₖ  v t' t ∷ₜ subSpₖ v t' sp
-  subSpₖ v t' (_∷ₖ_ {B = B} k sp) = T.sub v t' k ∷ₖ
-    subst (λ x → Sp _ x _) (sub-inst v k t' B) (subSpₖ v t' sp)
+  subSpₜ v t' ε        = ε
+  subSpₜ v t' (t ∷ sp) = subₜ v t' t ∷ subSpₜ v t' sp
+  subSpₜ v t' (_∷ₜ_ {B = B} t sp) = T.sub v t' t ∷ₜ
+    subst (λ x → Sp _ x _) (sub-inst v t t' B) (subSpₜ v t' sp)
 
 mutual
   {-# TERMINATING #-} -- and why?? The call graph is the same as in Type sub
-  subₜ :
+  sub :
     ∀ {Γ Δ A B} (v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf {Γ} Δ B → Nf (subᶜᵗ v) B
-  subₜ v t' (ƛ t)  = ƛ subₜ (vsₜ v) t' t
-  subₜ v t' (Λ t)  = Λ subₜ (vsₖ v) t' t
-  subₜ v t' (ne (v' , sp)) with ∈-eq v v' | subSpₜ v t' sp
+  sub v t' (ƛ t) = ƛ sub (vsₜ v) t' t
+  sub v t' (Λ t) = Λ sub (vsₖ v) t' t
+  sub v t' (ne (v' , sp)) with ∈-eq v v' | subSp v t' sp
   ... | inj₁ refl | sp' = undrop v t' ◇ sp'
   ... | inj₂ v''  | sp' = ne (v'' , sp')
 
-  subSpₜ :
+  subSp :
     ∀ {Γ Δ A B C} (v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Sp {Γ} Δ B C → Sp (subᶜᵗ v) B C
-  subSpₜ v t' ε         = ε
-  subSpₜ v t' (x ∷ₜ sp) = subₜ v t' x ∷ₜ subSpₜ v t' sp
-  subSpₜ v t' (t ∷ₖ sp) = t           ∷ₖ subSpₜ v t' sp
+  subSp v t' ε          = ε
+  subSp v t' (t  ∷  sp) = sub v t' t ∷  subSp v t' sp
+  subSp v t' (ty ∷ₜ sp) = ty         ∷ₜ subSp v t' sp
 
   _◇_ : ∀ {Γ Δ A B} → Nf {Γ} Δ A → Sp Δ A B → Nf Δ B
   t     ◇ ε          = t
-  (ƛ t) ◇ (t' ∷ₜ sp) = subₜ vz t' t ◇ sp
-  (Λ t) ◇ (k  ∷ₖ sp) = subₖ vz k  t ◇ sp
+  (ƛ t) ◇ (t' ∷  sp) = sub  vz t'  t ◇ sp
+  (Λ t) ◇ (ty ∷ₜ sp) = subₜ vz ty  t ◇ sp
 
 nf : ∀ {Γ Δ A} → Tm {Γ} Δ A → Nf Δ A
 nf (var v)  = η v
 nf (ƛ t)    = ƛ nf t
 nf (Λ t)    = Λ nf t
 nf (f ∙ x)  with nf f
-... | ƛ f' = subₜ vz (nf x) f'
+... | ƛ f' = sub vz (nf x) f'
 nf (f ∙ₜ x) with nf f
-... | Λ f' = subₖ vz x f'
+... | Λ f' = subₜ vz x f'
 
