@@ -205,7 +205,7 @@ mutual
   sub :
     ∀ {Γ Δ A B} (v : A ∈ Δ) → Nf (dropᶜᵗ v) (dropᵗ v) → Nf {Γ} Δ B → Nf (subᶜᵗ v) B
   sub v t' (ƛ t) = ƛ sub (vsₜ v) t' t
-  sub v t' (Λ t) = Λ sub {A = T.ren top _} (vsₖ v) t' t   -- renames A
+  sub v t' (Λ t) = Λ sub (vsₖ v) t' t
   sub v t' (ne (v' , sp)) with ∈-eq v v' | subSp v t' sp
   ... | inj₁ refl | sp' = undrop v t' ◇ sp'
   ... | inj₂ v''  | sp' = ne (v'' , sp')
@@ -218,8 +218,9 @@ mutual
 
   _◇_ : ∀ {Γ Δ A B} → Nf {Γ} Δ A → Sp Δ A B → Nf Δ B
   t     ◇ ε          = t
-  _◇_ {A = A ⇒ B}  (ƛ t)(t' ∷  sp) = _◇_ {A = B} (sub  vz t' t) sp
-  _◇_ {A = ∀' A B} (Λ t)(ty ∷ₜ sp) = _◇_ {A = T.sub vz ty B} (subₜ vz ty t) sp -- subs A
+  (ƛ t) ◇ (t' ∷  sp) = sub  vz t' t ◇ sp
+  (Λ t) ◇ (ty ∷ₜ sp) = subₜ vz ty t ◇ sp
+
 
 nf : ∀ {Γ Δ A} → Tm {Γ} Δ A → Nf Δ A
 nf (var v)  = η v
