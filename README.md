@@ -11,5 +11,5 @@ Most notably, what we **don't have** is a termination proof for term substitutio
 
 This setup would be amenable to termination proofs only for predicative or stratified System F, similarly to what's in the paper of [Eades and Stump](http://homepage.cs.uiowa.edu/~astump/papers/pstt-2010.pdf). 
 
-However, eta expansion, renaming and type substition is still total (as certified by Agda) and hopefully useful. We also have a rather large chunk of the correctness proof for STLC's normalization, and we can play around with the normalization function.
+However, eta expansion, renaming and type substition is still total (as certified by Agda) and hopefully useful. We also have a rather large chunk of the correctness proof for STLC's normalization, and we can play around with the F-omega normalization function.
 
